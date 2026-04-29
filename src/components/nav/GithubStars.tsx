@@ -9,14 +9,23 @@ function formatStars(n: number): string {
   return String(n);
 }
 
-/**
- * Static star count — no live GitHub API calls by default.
- * To show a live count, set NEXT_PUBLIC_GITHUB_STARS at build time, or
- * (with approval) swap this for a server component that fetches
- * https://api.github.com/repos/<owner>/<repo>.
- */
-export function GithubStars() {
-  const { url: repoUrl, stars } = SITE.github;
+async function fetchStarCount(repo: string): Promise<number> {
+  try {
+    const res = await fetch(`https://api.github.com/repos/${repo}`, {
+      next: { revalidate: 3600 },
+      headers: { Accept: "application/vnd.github+json" },
+    });
+    if (!res.ok) return SITE.github.stars;
+    const data = await res.json();
+    return data.stargazers_count ?? SITE.github.stars;
+  } catch {
+    return SITE.github.stars;
+  }
+}
+
+export async function GithubStars() {
+  const { url: repoUrl, repo } = SITE.github;
+  const stars = await fetchStarCount(repo);
 
   return (
     <a

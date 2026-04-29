@@ -30,13 +30,6 @@ export default function PlantsPage() {
 
   return (
     <PageContainer>
-      <PageHeader
-        eyebrow="The garden"
-        title="Pick a plant to chat with."
-        lead="Each plant has its own live camera, sensor feed, and personality."
-        className="mb-10"
-      />
-
       <section aria-labelledby="global-stats" className="mb-12">
         <h2 id="global-stats" className="sr-only">
           Garden-wide stats
@@ -75,7 +68,7 @@ export default function PlantsPage() {
             id="plant-grid"
             className="text-2xl font-extrabold tracking-tight text-ink"
           >
-            All plants
+            The Garden
           </h2>
           <p className="text-sm text-ink-muted">
             {plants.length} online &middot; more coming soon

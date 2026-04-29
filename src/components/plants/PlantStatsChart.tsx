@@ -1,4 +1,7 @@
-import { Card, Eyebrow, SectionHeader } from "@/components/ui";
+"use client";
+
+import { Card, Eyebrow, LineChart, SectionHeader } from "@/components/ui";
+import type { LineChartProps } from "@/components/ui";
 import type { Plant } from "@/lib/plants";
 
 type Series = {
@@ -8,13 +11,16 @@ type Series = {
   latest: number;
   points: number[];
   domain: [number, number];
+  tone: NonNullable<LineChartProps["tone"]>;
 };
+
+const HOURS = 24;
 
 /**
  * Deterministic pseudo-series so server- and client-renders match.
  * Each point jitters around `center` within ±`amplitude`.
  */
-function mockSeries(seed: number, center: number, amplitude: number, n = 24) {
+function mockSeries(seed: number, center: number, amplitude: number, n = HOURS) {
   const arr: number[] = [];
   let x = seed;
   for (let i = 0; i < n; i++) {
@@ -25,21 +31,13 @@ function mockSeries(seed: number, center: number, amplitude: number, n = 24) {
   return arr;
 }
 
-function pathFor(points: number[], width: number, height: number): string {
-  if (points.length === 0) return "";
-  const min = Math.min(...points);
-  const max = Math.max(...points);
-  const range = max - min || 1;
-  const stepX = width / (points.length - 1);
-  const padY = 6;
-  return points
-    .map((p, i) => {
-      const x = i * stepX;
-      const y = height - padY - ((p - min) / range) * (height - padY * 2);
-      return `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(" ");
-}
+/** One label per point — oldest → newest. Drives both the x-axis and the hover tooltip. */
+const TIME_LABELS = Array.from({ length: HOURS }, (_, i) => {
+  const hoursAgo = HOURS - 1 - i;
+  if (hoursAgo === 0) return "now";
+  if (hoursAgo === 1) return "1h ago";
+  return `${hoursAgo}h ago`;
+});
 
 export function PlantStatsChart({ plant }: { plant: Plant }) {
   const series: Series[] = [
@@ -50,6 +48,7 @@ export function PlantStatsChart({ plant }: { plant: Plant }) {
       latest: plant.humidity,
       points: mockSeries(plant.humidity * 11, plant.humidity, 6),
       domain: [0, 100],
+      tone: "brand",
     },
     {
       key: "temperature",
@@ -62,6 +61,7 @@ export function PlantStatsChart({ plant }: { plant: Plant }) {
         1.5,
       ),
       domain: [15, 30],
+      tone: "accent",
     },
     {
       key: "soil",
@@ -70,6 +70,7 @@ export function PlantStatsChart({ plant }: { plant: Plant }) {
       latest: plant.soilMoisture,
       points: mockSeries(plant.soilMoisture * 23, plant.soilMoisture, 8),
       domain: [0, 100],
+      tone: "success",
     },
   ];
 
@@ -88,41 +89,32 @@ export function PlantStatsChart({ plant }: { plant: Plant }) {
       />
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
-        {series.map((s) => {
-          const w = 280;
-          const h = 80;
-          return (
-            <div
-              key={s.key}
-              className="rounded-xl bg-surface-sunken p-4"
-            >
-              <div className="flex items-baseline justify-between">
-                <Eyebrow>{s.label}</Eyebrow>
-                <div className="text-base font-extrabold text-ink">
-                  {s.latest}
-                  <span className="ml-0.5 text-xs font-bold text-ink-muted">
-                    {s.unit}
-                  </span>
-                </div>
+        {series.map((s) => (
+          <div key={s.key} className="rounded-xl bg-surface-sunken p-4">
+            <div className="flex items-baseline justify-between">
+              <Eyebrow>{s.label}</Eyebrow>
+              <div className="text-base font-extrabold text-ink">
+                {s.latest}
+                <span className="ml-0.5 text-xs font-bold text-ink-muted">
+                  {s.unit}
+                </span>
               </div>
-              <svg
-                role="img"
-                aria-label={`${s.label} over time`}
-                viewBox={`0 0 ${w} ${h}`}
-                className="mt-2 h-16 w-full"
-              >
-                <path
-                  d={pathFor(s.points, w, h)}
-                  fill="none"
-                  stroke="var(--color-brand)"
-                  strokeWidth={2}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
             </div>
-          );
-        })}
+            <LineChart
+              points={s.points}
+              domain={s.domain}
+              tone={s.tone}
+              height="md"
+              showAxes
+              interactive
+              showEndpoint
+              yFormat={(v) => `${Math.round(v)}${s.unit}`}
+              xLabels={TIME_LABELS}
+              ariaLabel={`${s.label} over the last 24 hours, latest ${s.latest}${s.unit}`}
+              className="mt-3"
+            />
+          </div>
+        ))}
       </div>
     </Card>
   );

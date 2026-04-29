@@ -14,7 +14,7 @@ export function PageHeader({
   className = "",
 }: {
   eyebrow?: ReactNode;
-  title: ReactNode;
+  title?: ReactNode;
   lead?: ReactNode;
   align?: "left" | "center";
   className?: string;
@@ -35,9 +35,7 @@ export function PageHeader({
       <h1 className="mt-2 text-4xl font-extrabold tracking-tight text-ink sm:text-5xl">
         {title}
       </h1>
-      {lead && (
-        <p className="mt-4 text-lg text-ink-muted">{lead}</p>
-      )}
+      {lead && <p className="mt-4 text-lg text-ink-muted">{lead}</p>}
     </header>
   );
 }

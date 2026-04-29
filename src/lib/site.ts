@@ -11,10 +11,10 @@ export const SITE = {
   // Configure these via env vars once the repo is public.
   // Leaving as placeholders keeps the UI working without external calls.
   github: {
-    repo: process.env.NEXT_PUBLIC_GITHUB_REPO || "your-username/plantbot",
+    repo: process.env.NEXT_PUBLIC_GITHUB_REPO || "DenardYap/plantbot",
     url:
       process.env.NEXT_PUBLIC_GITHUB_URL ||
-      "https://github.com/your-username/plantbot",
+      "https://github.com/DenardYap/plantbot",
     stars: Number(process.env.NEXT_PUBLIC_GITHUB_STARS || 0),
   },
 } as const;

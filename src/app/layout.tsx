@@ -69,7 +69,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: [{ media: "(prefers-color-scheme: light)", color: "#f7faf8" }],
+  themeColor: [{ media: "(prefers-color-scheme: light)", color: "#f6f8f7" }],
 };
 
 const organizationJsonLd = {

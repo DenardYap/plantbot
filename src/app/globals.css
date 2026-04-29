@@ -3,16 +3,25 @@
 /* ---------------------------------------------------------------------------
  * Design tokens
  *   - Personality: playful → rounded sans-serif (Nunito) + larger radii
- *   - Palette: warm, slightly-saturated greys + a muted sage/emerald green
- *     (hue ≈ 150°, intentionally low saturation at midtones for an
- *     elegant, minimalistic feel)
- *   - All colors in HSL. 10-step scales. Saturation bumps at extremes.
+ *   - Palette: six hue-separated families, all HSL.
+ *       Primary  — sage/emerald  (brand)                       ~150°
+ *       Accent   — warm amber    (playful highlight)            ~30°
+ *       Grey     — tinted warm-cool neutral                    ~150°
+ *       Red      — destructive                                   ~0°
+ *       Yellow   — warning (rotates toward orange when dark)    ~46°
+ *       Green    — success (brighter/grassier than primary)    ~135°
+ *   - Every scale is 100 → 900, base at 500.
+ *   - Saturation rises at the extremes (per Refactoring UI) so light
+ *     tints don't wash out and dark shades don't mud.
+ *   - Hue nudges slightly toward adjacent bright/dark hues at the
+ *     edges to keep vibrancy without a perceptible color shift.
  * ------------------------------------------------------------------------- */
 
 @theme {
   /* Typography */
-  --font-sans: var(--font-nunito), ui-sans-serif, system-ui, -apple-system,
-    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sans:
+    var(--font-nunito), ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
 
   /* Type scale (hand-picked; ~1.2x step) */
   --text-xs: 0.75rem; /* 12 */
@@ -35,50 +44,105 @@
   --radius-2xl: 2.25rem; /* 36 */
   --radius-full: 9999px;
 
-  /* Grey scale — hue 150, ~6% saturation (cool, leafy-leaning neutral).
-     Avoid true black/white; 50 and 950 stop short of the extremes. */
-  --color-grey-50: hsl(150 15% 98%);
-  --color-grey-100: hsl(150 12% 95%);
-  --color-grey-200: hsl(150 10% 90%);
-  --color-grey-300: hsl(150 8% 82%);
-  --color-grey-400: hsl(150 6% 64%);
-  --color-grey-500: hsl(150 5% 48%);
-  --color-grey-600: hsl(150 6% 36%);
-  --color-grey-700: hsl(150 8% 26%);
-  --color-grey-800: hsl(150 10% 17%);
-  --color-grey-900: hsl(150 12% 11%);
-  --color-grey-950: hsl(150 14% 7%);
+  /* ---- Grey — hue 150, low saturation, warm-cool neutral ---------------- */
+  --color-grey-100: hsl(150 14% 97%);
+  --color-grey-200: hsl(150 11% 93%);
+  --color-grey-300: hsl(150 9% 86%);
+  --color-grey-400: hsl(150 7% 66%);
+  --color-grey-500: hsl(150 6% 48%);
+  --color-grey-600: hsl(150 8% 36%);
+  --color-grey-700: hsl(150 10% 26%);
+  --color-grey-800: hsl(150 12% 17%);
+  --color-grey-900: hsl(150 14% 10%);
 
-  /* Green scale — hue 150, muted mid-tones, saturation bumped at extremes.
-     500 is the "brand" color; 600 is the default interactive shade. */
-  --color-green-50: hsl(150 50% 96%);
-  --color-green-100: hsl(150 48% 90%);
-  --color-green-200: hsl(150 44% 80%);
-  --color-green-300: hsl(150 40% 66%);
-  --color-green-400: hsl(150 38% 52%);
-  --color-green-500: hsl(150 42% 40%);
-  --color-green-600: hsl(150 48% 32%);
-  --color-green-700: hsl(150 54% 24%);
-  --color-green-800: hsl(150 58% 17%);
-  --color-green-900: hsl(150 62% 11%);
+  /* ---- Primary — sage / emerald (brand) --------------------------------- */
+  --color-primary-100: hsl(148 54% 94%);
+  --color-primary-200: hsl(148 50% 86%);
+  --color-primary-300: hsl(149 46% 72%);
+  --color-primary-400: hsl(150 44% 56%);
+  --color-primary-500: hsl(152 50% 40%);
+  --color-primary-600: hsl(154 56% 32%);
+  --color-primary-700: hsl(156 62% 24%);
+  --color-primary-800: hsl(158 66% 17%);
+  --color-primary-900: hsl(160 70% 10%);
 
-  /* Semantic aliases — let components refer to "surface", "ink", etc.
-     so palette swaps don't require a component-wide find-and-replace. */
-  --color-background: var(--color-grey-50);
-  --color-surface: #ffffff;
-  --color-surface-sunken: var(--color-grey-100);
+  /* ---- Accent — warm amber (playful complement to primary) -------------- */
+  --color-accent-100: hsl(38 96% 94%);
+  --color-accent-200: hsl(36 92% 85%);
+  --color-accent-300: hsl(34 86% 72%);
+  --color-accent-400: hsl(32 82% 60%);
+  --color-accent-500: hsl(30 86% 52%);
+  --color-accent-600: hsl(28 90% 44%);
+  --color-accent-700: hsl(26 94% 34%);
+  --color-accent-800: hsl(24 96% 24%);
+  --color-accent-900: hsl(22 98% 15%);
+
+  /* ---- Red — destructive ------------------------------------------------ */
+  --color-red-100: hsl(4 94% 95%);
+  --color-red-200: hsl(3 90% 88%);
+  --color-red-300: hsl(2 84% 78%);
+  --color-red-400: hsl(1 80% 64%);
+  --color-red-500: hsl(0 82% 54%);
+  --color-red-600: hsl(358 84% 46%);
+  --color-red-700: hsl(356 88% 36%);
+  --color-red-800: hsl(354 92% 25%);
+  --color-red-900: hsl(352 96% 16%);
+
+  /* ---- Yellow — warning (hue rotates toward orange when dark) ----------- */
+  --color-yellow-100: hsl(52 98% 92%);
+  --color-yellow-200: hsl(50 96% 82%);
+  --color-yellow-300: hsl(48 94% 68%);
+  --color-yellow-400: hsl(46 96% 56%);
+  --color-yellow-500: hsl(46 98% 48%);
+  --color-yellow-600: hsl(42 96% 40%);
+  --color-yellow-700: hsl(38 94% 31%);
+  --color-yellow-800: hsl(34 92% 22%);
+  --color-yellow-900: hsl(30 90% 14%);
+
+  /* ---- Green — success / confirmation (brighter than primary sage) ------ */
+  --color-green-100: hsl(132 72% 94%);
+  --color-green-200: hsl(134 68% 84%);
+  --color-green-300: hsl(135 62% 66%);
+  --color-green-400: hsl(136 58% 52%);
+  --color-green-500: hsl(138 64% 42%);
+  --color-green-600: hsl(140 68% 34%);
+  --color-green-700: hsl(142 72% 26%);
+  --color-green-800: hsl(144 76% 18%);
+  --color-green-900: hsl(146 80% 11%);
+
+  /* ---- Semantic aliases -------------------------------------------------
+     Components should prefer these over raw scale values so a palette swap
+     doesn't require a codebase-wide find-and-replace. */
+
+  --color-background: var(--color-grey-100);
+  --color-surface: hsl(0 0% 100%);
+  --color-surface-sunken: var(--color-grey-200);
   --color-border: var(--color-grey-200);
   --color-border-strong: var(--color-grey-300);
 
   --color-ink: var(--color-grey-900); /* primary text */
   --color-ink-muted: var(--color-grey-600); /* secondary text */
   --color-ink-subtle: var(--color-grey-400); /* tertiary text */
-  --color-ink-inverse: var(--color-grey-50);
+  --color-ink-inverse: var(--color-grey-100);
 
-  --color-brand: var(--color-green-500);
-  --color-brand-hover: var(--color-green-600);
-  --color-brand-soft: var(--color-green-100);
-  --color-brand-soft-hover: var(--color-green-200);
+  --color-brand: var(--color-primary-500);
+  --color-brand-hover: var(--color-primary-600);
+  --color-brand-soft: var(--color-primary-100);
+  --color-brand-soft-hover: var(--color-primary-200);
+
+  --color-accent: var(--color-accent-500);
+  --color-accent-hover: var(--color-accent-600);
+  --color-accent-soft: var(--color-accent-100);
+
+  --color-success: var(--color-green-500);
+  --color-success-soft: var(--color-green-100);
+
+  --color-warning: var(--color-yellow-500);
+  --color-warning-soft: var(--color-yellow-100);
+
+  --color-danger: var(--color-red-500);
+  --color-danger-hover: var(--color-red-600);
+  --color-danger-soft: var(--color-red-100);
 }
 
 /* ---------------------------------------------------------------------------
@@ -118,6 +182,6 @@ h6 {
 
 /* Nice selection color matching brand */
 ::selection {
-  background: var(--color-green-200);
-  color: var(--color-green-900);
+  background: var(--color-primary-200);
+  color: var(--color-primary-900);
 }

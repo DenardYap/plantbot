@@ -61,7 +61,9 @@ export function NavLinks() {
             title={active ? undefined : label}
             className={[
               "group inline-flex items-center rounded-full p-1",
-              "text-base font-extrabold transition-colors duration-200",
+              "text-base font-extrabold",
+              "transition-[background-color,color] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
+              "motion-reduce:transition-none",
               active
                 ? "bg-ink text-ink-inverse"
                 : "text-ink-muted hover:bg-grey-100 hover:text-ink",
@@ -79,22 +81,29 @@ export function NavLinks() {
 
             {/*
              * Animated label container.
-             * `min-w-0` is load-bearing — as a flex child of the Link,
-             * the default `min-width: auto` resolves to the label's
-             * min-content width, which would override `max-width: 0` and
-             * leave the hover pill stretched to the right of the icon.
+             *
+             * We use the classic `grid-template-columns: 0fr → 1fr` trick
+             * rather than `max-width`. Browsers can smoothly interpolate
+             * between two `fr` values, producing a genuinely continuous
+             * width transition. Interpolating `max-width` to a
+             * content-defined value (e.g. `max-w-[10rem]` where the text
+             * is narrower) gives a visible "snap" at the end.
+             *
+             * The inner span carries `min-w-0` so the text can collapse to
+             * zero width as the track shrinks (default `min-width: auto`
+             * would otherwise resolve to min-content and jam the animation).
              */}
             <span
               className={[
-                "min-w-0 overflow-hidden whitespace-nowrap",
-                "transition-[max-width,opacity,padding] duration-300 ease-out",
+                "grid overflow-hidden",
+                "transition-[grid-template-columns,opacity,padding] duration-[350ms] ease-[cubic-bezier(0.4,0,0.2,1)]",
                 "motion-reduce:transition-none",
                 active
-                  ? "max-w-[10rem] pl-1 pr-2 opacity-100"
-                  : "max-w-0 px-0 opacity-0",
+                  ? "grid-cols-[1fr] pl-1 pr-2 opacity-100"
+                  : "grid-cols-[0fr] px-0 opacity-0",
               ].join(" ")}
             >
-              {label}
+              <span className="min-w-0 whitespace-nowrap">{label}</span>
             </span>
           </Link>
         );

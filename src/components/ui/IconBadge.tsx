@@ -1,6 +1,13 @@
 import type { HTMLAttributes, ReactNode } from "react";
 
-type Tone = "brand" | "neutral" | "ink" | "inverse";
+type Tone =
+  | "brand"
+  | "neutral"
+  | "ink"
+  | "inverse"
+  | "success"
+  | "warning"
+  | "danger";
 type Size = "sm" | "md" | "lg" | "xl";
 
 const toneCls: Record<Tone, string> = {
@@ -8,6 +15,9 @@ const toneCls: Record<Tone, string> = {
   neutral: "bg-grey-100 text-ink",
   ink: "bg-ink text-ink-inverse",
   inverse: "bg-ink-inverse/90 text-ink shadow-lg",
+  success: "bg-success-soft text-green-700",
+  warning: "bg-warning-soft text-yellow-700",
+  danger: "bg-danger-soft text-red-600",
 };
 
 const sizeCls: Record<Size, string> = {

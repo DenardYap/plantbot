@@ -1,12 +1,22 @@
 import type { ReactNode } from "react";
 
-type Tone = "brand" | "dark";
+type Tone =
+  | "brand"
+  | "dark"
+  | "neutral"
+  | "success"
+  | "warning"
+  | "danger";
 type Size = "sm" | "md";
 
 const toneCls: Record<Tone, string> = {
   brand: "bg-brand-soft text-brand",
   // Dark-overlay pill used on top of media (camera feeds, card hero art)
   dark: "bg-ink/80 text-ink-inverse backdrop-blur",
+  neutral: "bg-grey-200 text-ink",
+  success: "bg-success-soft text-green-700",
+  warning: "bg-warning-soft text-yellow-700",
+  danger: "bg-danger-soft text-red-600",
 };
 
 const sizeCls: Record<Size, string> = {

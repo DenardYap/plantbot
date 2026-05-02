@@ -4,6 +4,7 @@ import "./globals.css";
 import { NavBar } from "@/components/nav/NavBar";
 import { RoutePrewarmer } from "@/components/nav/RoutePrewarmer";
 import { SiteFooter } from "@/components/layout/SiteFooter";
+import { QueryProvider } from "@/components/providers/QueryProvider";
 import { SITE } from "@/lib/site";
 
 const nunito = Nunito({
@@ -97,12 +98,14 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${nunito.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-background text-ink">
-        <NavBar />
-        <RoutePrewarmer />
-        <main id="main" className="flex-1">
-          {children}
-        </main>
-        <SiteFooter />
+        <QueryProvider>
+          <NavBar />
+          <RoutePrewarmer />
+          <main id="main" className="flex-1">
+            {children}
+          </main>
+          <SiteFooter />
+        </QueryProvider>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{

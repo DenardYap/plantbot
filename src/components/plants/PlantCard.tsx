@@ -1,12 +1,19 @@
 import Link from "next/link";
 import { Card, Eyebrow, Pill } from "@/components/ui";
-import type { Plant } from "@/lib/plants";
 import {
+  CameraOffIcon,
   DropletIcon,
+  LeafIcon,
+  PlantPotIcon,
   ThermometerIcon,
   SparkleIcon,
-  LiveDotIcon,
 } from "@/components/icons";
+import type {
+  CurrentReadings,
+  HealthSummaryDTO,
+  PlantDTO,
+} from "@/lib/api/types";
+import { match } from "ts-pattern";
 
 function happinessLabel(score: number): string {
   if (score >= 90) return "Thriving";
@@ -16,23 +23,89 @@ function happinessLabel(score: number): string {
   return "Needs help";
 }
 
-export function PlantCard({ plant }: { plant: Plant }) {
+function pillTone(
+  s: HealthSummaryDTO["overall"],
+): "success" | "warning" | "danger" | "neutral" {
+  return match(s)
+    .with("ok", () => "success" as const)
+    .with("warn", () => "warning" as const)
+    .with("danger", () => "danger" as const)
+    .with("unknown", () => "neutral" as const)
+    .exhaustive();
+}
+
+const fmt = (v: number | null, digits = 0) =>
+  v === null ? "—" : v.toFixed(digits);
+
+export function PlantCard({
+  plant,
+  current,
+  health,
+}: {
+  plant: PlantDTO;
+  current: CurrentReadings;
+  health: HealthSummaryDTO;
+}) {
   return (
     <Card as="article" className="group relative overflow-hidden">
       <Link
         href={`/plants/${plant.slug}`}
         className="block focus:outline-none"
-        aria-label={`Open chat with ${plant.name}`}
+        aria-label={`Open ${plant.name}`}
       >
-        {/* Placeholder for live camera preview */}
         <div className="relative aspect-[4/3] w-full overflow-hidden rounded-t-2xl bg-grey-200">
-          <div
-            aria-hidden
-            className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,hsl(150_42%_40%/0.30),transparent_60%),radial-gradient(circle_at_70%_80%,hsl(150_58%_17%/0.35),transparent_55%)]"
-          />
-          <Pill tone="dark" uppercase className="absolute left-3 top-3">
-            <LiveDotIcon className="h-2 w-2 text-green-300 animate-pulse" />
-            Live
+          {plant.profileImageUrl ? (
+            <>
+              {/* Plain <img> intentionally — the photo can live anywhere
+                  (public/ for now, but could be S3/CDN later). Skipping
+                  next/image avoids needing to pre-register every host. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={plant.profileImageUrl}
+                alt={plant.name}
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+              {/* 20% white wash so the dark headline always meets contrast
+                  without hiding the plant behind it. */}
+              <div aria-hidden className="absolute inset-0 bg-surface/60" />
+              {/* Centered chip — drop shadow gives the text its own depth
+                  layer so it never fights with the photo behind it. */}
+              <div className="absolute inset-0 grid place-items-center px-4 text-center">
+                <p className="text-base font-extrabold tracking-tight text-ink drop-shadow-[0_2px_8px_hsl(0_0%_100%/0.9)] sm:text-lg">
+                  {plant.nickname ?? plant.name} is not live now
+                </p>
+              </div>
+            </>
+          ) : (
+            // Default placeholder — kept intentionally for plants without a
+            // profile photo. Soft brand-tinted gradient + seedling icon.
+            <>
+              <div
+                aria-hidden
+                className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,hsl(150_42%_40%/0.30),transparent_60%),radial-gradient(circle_at_70%_80%,hsl(150_58%_17%/0.35),transparent_55%)]"
+              />
+              <div className="absolute inset-0 grid place-items-center text-brand">
+                <PlantPotIcon className="h-20 w-20 opacity-50" aria-hidden />
+              </div>
+            </>
+          )}
+          <Pill
+            tone="neutral"
+            size="sm"
+            uppercase
+            className="absolute left-3 top-3"
+          >
+            <CameraOffIcon className="h-3 w-3" aria-hidden />
+            Camera offline
+          </Pill>
+          <Pill
+            tone={pillTone(health.overall)}
+            size="sm"
+            uppercase
+            className="absolute right-3 top-3"
+          >
+            <SparkleIcon className="h-3 w-3" aria-hidden />
+            {happinessLabel(health.score)}
           </Pill>
         </div>
 
@@ -51,22 +124,22 @@ export function PlantCard({ plant }: { plant: Plant }) {
 
           <dl className="mt-4 grid grid-cols-3 gap-2">
             <Metric
-              icon={<SparkleIcon className="h-3.5 w-3.5" />}
-              label={happinessLabel(plant.happiness)}
-              value={`${plant.happiness}`}
-              unit="%"
-            />
-            <Metric
               icon={<DropletIcon className="h-3.5 w-3.5" />}
               label="Humidity"
-              value={`${plant.humidity}`}
+              value={fmt(current.humidityPct)}
               unit="%"
             />
             <Metric
               icon={<ThermometerIcon className="h-3.5 w-3.5" />}
               label="Temp"
-              value={`${plant.temperature}`}
+              value={fmt(current.temperatureC, 1)}
               unit="°C"
+            />
+            <Metric
+              icon={<LeafIcon className="h-3.5 w-3.5" />}
+              label="Soil"
+              value={fmt(current.soilMoisturePct)}
+              unit="%"
             />
           </dl>
 
@@ -97,7 +170,7 @@ function Metric({
         <span className="text-brand">{icon}</span>
         {label}
       </Eyebrow>
-      <dd className="mt-0.5 text-base font-extrabold text-ink">
+      <dd className="mt-0.5 text-base font-extrabold text-ink tabular-nums">
         {value}
         {unit && (
           <span className="ml-0.5 text-xs font-bold text-ink-muted">

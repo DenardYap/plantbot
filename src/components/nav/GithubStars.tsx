@@ -11,9 +11,14 @@ function formatStars(n: number): string {
 
 async function fetchStarCount(repo: string): Promise<number> {
   try {
+    const headers: HeadersInit = { Accept: "application/vnd.github+json" };
+    if (process.env.GITHUB_TOKEN) {
+      headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
+    }
+
     const res = await fetch(`https://api.github.com/repos/${repo}`, {
       next: { revalidate: 3600 },
-      headers: { Accept: "application/vnd.github+json" },
+      headers,
     });
     if (!res.ok) return SITE.github.stars;
     const data = await res.json();

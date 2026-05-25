@@ -126,7 +126,7 @@ export function PlantStatsChart({
   );
 
   return (
-    <Card className="p-6">
+    <Card className="p-4 sm:p-6">
       <SectionHeader
         eyebrow="Sensor history"
         title={`${plantName} over time`}

@@ -4,7 +4,7 @@ import type { Plant } from "@/lib/plants";
 
 export function PlantFacts({ plant }: { plant: Plant }) {
   return (
-    <Card className="p-6">
+    <Card className="p-4 sm:p-6">
       <SectionHeader
         eyebrow={`About ${plant.name}`}
         title="A few quick facts"

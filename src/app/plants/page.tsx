@@ -79,11 +79,11 @@ export default async function PlantsPage() {
 
   return (
     <PageContainer>
-      <section aria-labelledby="global-stats" className="mb-12">
+      <section aria-labelledby="global-stats" className="mb-10 sm:mb-12">
         <h2 id="global-stats" className="sr-only">
           Garden-wide stats
         </h2>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
           <StatTile
             label="Plants online"
             value={count}
@@ -115,7 +115,7 @@ export default async function PlantsPage() {
       </section>
 
       <section aria-labelledby="plant-grid">
-        <div className="mb-5 flex items-end justify-between">
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
           <h2
             id="plant-grid"
             className="text-2xl font-extrabold tracking-tight text-ink"
@@ -133,7 +133,7 @@ export default async function PlantsPage() {
             it&apos;ll show up here.
           </p>
         ) : (
-          <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
             {enriched.map(({ plant, current, health }) => (
               <li key={plant.slug}>
                 <PlantCard plant={plant} current={current} health={health} />

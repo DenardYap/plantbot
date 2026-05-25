@@ -130,8 +130,8 @@ export function PlantCard({
           </Pill>
         </div>
 
-        <div className="p-5">
-          <div className="flex items-baseline justify-between gap-3">
+        <div className="p-4 sm:p-5">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
             <h3 className="text-xl font-extrabold tracking-tight text-ink">
               {plant.name}
             </h3>
@@ -143,7 +143,7 @@ export function PlantCard({
             {plant.personality}
           </p>
 
-          <dl className="mt-4 grid grid-cols-3 gap-2">
+          <dl className="mt-4 grid grid-cols-3 gap-1.5 sm:gap-2">
             <Metric
               icon={<DropletIcon className="h-3.5 w-3.5" />}
               label="Humidity"
@@ -186,7 +186,7 @@ function Metric({
   unit?: string;
 }) {
   return (
-    <div className="rounded-xl bg-surface-sunken px-3 py-2.5">
+    <div className="min-w-0 rounded-xl bg-surface-sunken px-2.5 py-2.5 sm:px-3">
       <Eyebrow as="dt" size="xxs" className="flex items-center gap-1">
         <span className="text-brand">{icon}</span>
         {label}

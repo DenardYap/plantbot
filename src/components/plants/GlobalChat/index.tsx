@@ -3,7 +3,7 @@
 import { useEffect, useMemo } from "react";
 import { Card, Eyebrow, Pill } from "@/components/ui";
 import { useChatMessages, useSendMessage } from "@/lib/api/hooks";
-import { useVisitorStore } from "@/stores/useVisitorStore";
+import { useEnsureVisitor, useVisitorStore } from "@/stores/useVisitorStore";
 import { HERO_ROW_HEIGHT_LG_CLASS } from "../layout";
 import { ChatInputForm } from "./ChatInputForm";
 import { ChatMessageRow } from "./ChatMessageRow";
@@ -20,6 +20,7 @@ export function GlobalChat({
   plantName: string;
   plantProfileImageUrl?: string | null;
 }) {
+  useEnsureVisitor();
   const visitorName = useVisitorStore((s) => s.name);
   const visitorHydrated = useVisitorStore((s) => s.hydrated);
 
@@ -80,12 +81,12 @@ export function GlobalChat({
 
   return (
     <Card
-      className={`flex h-[560px] max-h-[80vh] flex-col ${HERO_ROW_HEIGHT_LG_CLASS} lg:max-h-none`}
+      className={`flex h-[440px] max-h-[70vh] flex-col sm:h-[560px] sm:max-h-[80vh] ${HERO_ROW_HEIGHT_LG_CLASS} lg:max-h-none`}
     >
-      <header className="flex items-center justify-between border-b border-border px-5 py-4">
+      <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-5 sm:py-4">
         <div className="min-w-0">
           <Eyebrow>Chat with the plant</Eyebrow>
-          <div className="truncate text-base font-extrabold text-ink">
+          <div className="truncate text-sm font-extrabold text-ink sm:text-base">
             #{plantName.toLowerCase().replace(/\s+/g, "-")}
           </div>
         </div>
@@ -103,7 +104,7 @@ export function GlobalChat({
 
       <ol
         ref={listRef}
-        className="flex-1 space-y-4 overflow-y-auto px-5 py-4"
+        className="flex-1 space-y-4 overflow-y-auto px-4 py-3 sm:px-5 sm:py-4"
         aria-live="polite"
       >
         {hasOlder && (

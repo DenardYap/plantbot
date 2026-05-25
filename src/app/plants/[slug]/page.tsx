@@ -81,24 +81,24 @@ export default async function PlantPage({
         ]}
       />
 
-      <header className="mb-8 mt-6 flex flex-wrap items-start justify-between gap-6">
-        <div className="flex items-start gap-5">
+      <header className="mb-8 mt-4 flex flex-wrap items-start justify-between gap-6 sm:mt-6">
+        <div className="flex items-start gap-4 sm:gap-5">
           {plant.profileImageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={plant.profileImageUrl}
               alt={plant.name}
-              className="h-24 w-24 rounded-2xl object-cover ring-1 ring-border sm:h-28 sm:w-28"
+              className="h-16 w-16 rounded-2xl object-cover ring-1 ring-border sm:h-28 sm:w-28"
             />
           ) : null}
-          <div>
+          <div className="min-w-0 flex-1">
             <Eyebrow tone="brand" size="sm">
               {plant.commonName}
             </Eyebrow>
-            <h1 className="mt-1 text-4xl font-extrabold tracking-tight text-ink sm:text-5xl">
+            <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-ink sm:text-5xl">
               {plant.name}
             </h1>
-            <p className="mt-2 max-w-xl text-base text-ink-muted">
+            <p className="mt-2 max-w-xl text-sm text-ink-muted sm:text-base">
               {plant.personality}
             </p>
           </div>
@@ -106,7 +106,7 @@ export default async function PlantPage({
       </header>
 
       {/* Row 1: live (placeholder) video + chat */}
-      <section className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+      <section className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-12">
         <div className="lg:col-span-7">
           <VideoStream
             plantName={plant.name}
@@ -124,7 +124,7 @@ export default async function PlantPage({
       </section>
 
       {/* Row 2: live agent activity + live stat tiles */}
-      <section className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-12">
+      <section className="mt-4 grid grid-cols-1 gap-4 sm:mt-6 sm:gap-6 lg:grid-cols-12">
         <div className="lg:col-span-7">
           <AgentActivity slug={plant.slug} />
         </div>
@@ -133,11 +133,11 @@ export default async function PlantPage({
         </div>
       </section>
 
-      <section className="mt-6">
+      <section className="mt-4 sm:mt-6">
         <PlantFacts plant={plant} />
       </section>
 
-      <section className="mt-6">
+      <section className="mt-4 sm:mt-6">
         <PlantStatsChart slug={plant.slug} plantName={plant.name} />
       </section>
 

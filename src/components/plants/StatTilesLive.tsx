@@ -56,7 +56,7 @@ export function StatTilesLive({
   const skeleton = isLoading && !data;
 
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="grid grid-cols-2 gap-3 sm:gap-4">
       <StatTile
         label="Happiness"
         value={skeleton ? "—" : fmt(happiness)}

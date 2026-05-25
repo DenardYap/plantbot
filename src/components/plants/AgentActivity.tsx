@@ -74,7 +74,7 @@ export function AgentActivity({ slug }: { slug: string }) {
   ];
 
   return (
-    <Card className="p-6">
+    <Card className="p-4 sm:p-6">
       <SectionHeader
         eyebrow="Agent activity"
         title="What PlantBot just measured"

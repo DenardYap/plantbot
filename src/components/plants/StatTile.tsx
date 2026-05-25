@@ -44,25 +44,33 @@ export function StatTile({
     .exhaustive();
 
   return (
-    <Card className={["p-5", ringCls[tone]].filter(Boolean).join(" ")}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-1.5">
+    <Card className={["p-4 sm:p-5", ringCls[tone]].filter(Boolean).join(" ")}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-1.5">
           <Eyebrow size="sm">{label}</Eyebrow>
-          {statusIcon && <span className="text-ink-muted">{statusIcon}</span>}
+          {statusIcon && (
+            <span className="shrink-0 text-ink-muted">{statusIcon}</span>
+          )}
         </div>
-        {icon && <IconBadge tone={badgeTone}>{icon}</IconBadge>}
+        {icon && (
+          <span className="shrink-0">
+            <IconBadge tone={badgeTone}>{icon}</IconBadge>
+          </span>
+        )}
       </div>
-      <div className="mt-2 flex items-baseline gap-1.5">
+      <div className="mt-2 flex items-baseline gap-1">
         <span
           className={[
-            "text-4xl font-extrabold tracking-tight tabular-nums",
+            "text-3xl font-extrabold tracking-tight tabular-nums sm:text-4xl",
             valueToneCls[tone],
           ].join(" ")}
         >
           {value}
         </span>
         {unit && (
-          <span className="text-lg font-bold text-ink-muted">{unit}</span>
+          <span className="text-base font-bold text-ink-muted sm:text-lg">
+            {unit}
+          </span>
         )}
       </div>
       {hint && <p className="mt-1 text-sm text-ink-muted">{hint}</p>}

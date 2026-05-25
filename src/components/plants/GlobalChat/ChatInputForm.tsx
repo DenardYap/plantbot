@@ -47,7 +47,9 @@ export function ChatInputForm({
         }
         disabled={disabled}
         maxLength={1000}
-        className="flex-1 rounded-full bg-surface-sunken px-4 py-2.5 text-sm font-medium text-ink placeholder:text-ink-subtle focus:outline-none focus:ring-2 focus:ring-brand disabled:opacity-60"
+        // text-base (16px) on mobile so iOS Safari doesn't auto-zoom into the
+        // input when it focuses; can drop back to sm on larger screens.
+        className="min-w-0 flex-1 rounded-full bg-surface-sunken px-4 py-2.5 text-base font-medium text-ink placeholder:text-ink-subtle focus:outline-none focus:ring-2 focus:ring-brand disabled:opacity-60 sm:text-sm"
       />
       <IconButton
         type="submit"

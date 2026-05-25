@@ -38,17 +38,23 @@ export async function GithubStars() {
       target="_blank"
       rel="noreferrer noopener"
       aria-label={`Star ${SITE.name} on GitHub (${stars} stars)`}
-      className="group inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3.5 py-2.5 text-base font-bold text-ink-muted shadow-[0_1px_0_hsl(150_10%_90%),_0_8px_24px_-12px_hsl(150_20%_15%/0.15)] transition-colors hover:text-ink"
+      className="group inline-flex items-center gap-2 rounded-full border border-border bg-surface px-2.5 py-2 text-sm font-bold text-ink-muted shadow-[0_1px_0_hsl(150_10%_90%),_0_8px_24px_-12px_hsl(150_20%_15%/0.15)] transition-colors hover:text-ink sm:px-3.5 sm:py-2.5 sm:text-base"
     >
-      <span className="inline-flex items-center gap-1.5">
+      {/* Star + count: hidden on the smallest screens so the nav pill keeps
+          its centered breathing room. The GitHub mark below is still a clear
+          link to the repo. */}
+      <span className="hidden items-center gap-1.5 sm:inline-flex">
         <StarIcon className="h-[18px] w-[18px]" aria-hidden />
         <span>Star</span>
         <span aria-hidden className="text-ink-subtle">
           {formatStars(stars)}
         </span>
       </span>
-      <span className="h-5 w-px bg-border" aria-hidden />
-      <GithubMarkIcon className="h-[22px] w-[22px]" aria-hidden />
+      <span className="hidden h-5 w-px bg-border sm:block" aria-hidden />
+      <GithubMarkIcon
+        className="h-[20px] w-[20px] sm:h-[22px] sm:w-[22px]"
+        aria-hidden
+      />
     </a>
   );
 }

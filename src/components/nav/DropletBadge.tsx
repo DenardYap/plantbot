@@ -50,11 +50,11 @@ export function DropletBadge() {
         role="status"
         aria-label={`Watering droplets remaining today: ${display} of ${DAILY_DROPLETS}`}
         aria-describedby={TOOLTIP_ID}
-        className="inline-flex cursor-help items-center gap-2 rounded-full border border-border bg-surface px-3.5 py-2.5 text-base font-bold text-ink-muted shadow-[0_1px_0_hsl(150_10%_90%),_0_8px_24px_-12px_hsl(150_20%_15%/0.15)]"
+        className="inline-flex cursor-help items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-2 text-sm font-bold text-ink-muted shadow-[0_1px_0_hsl(150_10%_90%),_0_8px_24px_-12px_hsl(150_20%_15%/0.15)] sm:gap-2 sm:px-3.5 sm:py-2.5 sm:text-base"
       >
         <DropletIcon
           className={[
-            "h-[18px] w-[18px]",
+            "h-4 w-4 sm:h-[18px] sm:w-[18px]",
             empty
               ? "fill-grey-300 text-ink-subtle"
               : "fill-water text-water",
@@ -62,7 +62,11 @@ export function DropletBadge() {
           aria-hidden
         />
         <span className="tabular-nums text-ink">{display}</span>
-        <span className="text-ink-subtle">/ {DAILY_DROPLETS}</span>
+        {/* "/ N" suffix hidden on the smallest screens — the daily allowance
+            is still conveyed via the tooltip + aria-label. */}
+        <span className="hidden text-ink-subtle sm:inline">
+          / {DAILY_DROPLETS}
+        </span>
       </span>
     </Tooltip>
   );

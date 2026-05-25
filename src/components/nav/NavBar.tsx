@@ -17,7 +17,7 @@ export function NavBar() {
          * - Wordmark sits at the left edge, GitHub at the right edge — both
          *   are anchored and never shift when the active tab changes.
          */}
-        <div className="mx-auto grid h-20 w-full max-w-6xl grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 sm:gap-4">
+        <div className="mx-auto grid h-16 w-full max-w-6xl grid-cols-[1fr_auto_1fr] items-center gap-2 px-3 sm:h-20 sm:gap-4 sm:px-4">
           {/* Wordmark — anchored to the left edge */}
           <Link
             href="/"
@@ -45,7 +45,7 @@ export function NavBar() {
           </nav>
 
           {/* Right-edge cluster: watering droplets + GitHub badge */}
-          <div className="flex items-center gap-2 justify-self-end sm:gap-3">
+          <div className="flex items-center gap-1.5 justify-self-end sm:gap-3">
             <DropletBadge />
             <GithubStars />
           </div>

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { PageContainer } from "@/components/layout/PageContainer";
+import { ComingSoonPlantCard } from "@/components/plants/ComingSoonPlantCard";
 import { PlantCard } from "@/components/plants/PlantCard";
 import { StatTile } from "@/components/plants/StatTile";
 import {
@@ -138,6 +139,13 @@ export default async function PlantsPage() {
                 <PlantCard plant={plant} current={current} health={health} />
               </li>
             ))}
+            <li>
+              <ComingSoonPlantCard
+                name="Basil"
+                species="Ocimum basilicum"
+                imageUrl="/basil.jpg"
+              />
+            </li>
           </ul>
         )}
       </section>

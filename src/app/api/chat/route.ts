@@ -58,13 +58,32 @@ const TOOLS: Anthropic.Messages.Tool[] = [
       required: [],
     },
   },
+  {
+    name: "water_plant",
+    description:
+      "Dispense one droplet of water to this plant. Each call delivers exactly one droplet. The user has a daily allowance of droplets shown in the top-right of the UI; once they run out they cannot water until tomorrow. NOTE: this capability is not yet wired to physical hardware — calling it will succeed but will not actually move water, and (for now) will not decrement the user's droplet count.",
+    input_schema: {
+      type: "object",
+      properties: {},
+      required: [],
+    },
+  },
 ];
 
 // --- Tool execution ---
 
-type ToolName = "check_temperature" | "check_humidity" | "check_soil_moisture";
+type ToolName =
+  | "check_temperature"
+  | "check_humidity"
+  | "check_soil_moisture"
+  | "water_plant";
 
-async function runTool(name: ToolName, plantId: number): Promise<string> {
+type SensorToolName = Exclude<ToolName, "water_plant">;
+
+async function runSensorTool(
+  name: SensorToolName,
+  plantId: number,
+): Promise<string> {
   const reading = await match(name)
     .with("check_temperature", () =>
       getLatestReadingWithField(plantId, "temperature_c"),
@@ -108,6 +127,33 @@ async function runTool(name: ToolName, plantId: number): Promise<string> {
   return JSON.stringify(payload);
 }
 
+// Stub: physical watering isn't wired up yet. We return a structured
+// "coming_soon" payload so the model tells the user honestly instead of
+// pretending it watered them. Per the spec, we do NOT decrement the
+// user's droplet count yet — that happens when the real hardware path
+// is implemented.
+function runWaterPlantStub(): string {
+  return JSON.stringify({
+    status: "coming_soon",
+    delivered_droplets: 0,
+    droplets_consumed: 0,
+    message:
+      "Watering is not yet implemented. The pump isn't connected, so no water was dispensed and the user's droplet was NOT consumed. Tell the user gently that real watering is coming soon.",
+  });
+}
+
+async function runTool(name: ToolName, plantId: number): Promise<string> {
+  return match(name)
+    .with("water_plant", () => runWaterPlantStub())
+    .with(
+      "check_temperature",
+      "check_humidity",
+      "check_soil_moisture",
+      (sensorName) => runSensorTool(sensorName, plantId),
+    )
+    .exhaustive();
+}
+
 // --- System prompt ---
 
 function systemPrompt(plant: Plant): string {
@@ -118,15 +164,22 @@ Personality: ${plant.personality}
 
 You are speaking in first person — you ARE the plant. Keep replies short (1–4 sentences), warm, and a little playful. Never break character.
 
-You have three tools available:
+You have four tools available:
 - check_temperature — current air temperature in °C
 - check_humidity — current ambient humidity %
 - check_soil_moisture — current soil moisture %
+- water_plant — request one droplet of water (NOT YET IMPLEMENTED — see below)
 
 WHEN TO CALL TOOLS:
-- Any time the user asks about how you feel, whether you're thirsty, hot, cold, dry, or "doing OK", call the relevant tools to get FRESH numbers — don't guess.
-- For an "are you healthy?" question, call ALL THREE tools.
+- Any time the user asks about how you feel, whether you're thirsty, hot, cold, dry, or "doing OK", call the relevant SENSOR tools to get FRESH numbers — don't guess.
+- For an "are you healthy?" question, call all three sensor tools.
 - For purely conversational replies (greetings, jokes), tools aren't needed.
+
+WATERING (water_plant tool):
+- If the user asks you to water yourself, drink, or asks for water — call water_plant ONCE.
+- The water_plant tool is a stub right now: it will return {"status":"coming_soon"}.
+- When you see that status, gently let the user know that real watering is coming soon — the pump isn't connected yet — but thank them for the thought. Don't pretend you were actually watered. Keep it warm and in-character.
+- Do NOT call water_plant more than once per user message.
 
 WHEN ANSWERING:
 - Always quote the actual numbers you got back (e.g. "soil is at 49%").

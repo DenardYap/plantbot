@@ -42,6 +42,7 @@ function toolLabel(name: string): string {
     .with("check_temperature", () => "checked temperature")
     .with("check_humidity", () => "checked humidity")
     .with("check_soil_moisture", () => "checked soil moisture")
+    .with("water_plant", () => "tried to water (coming soon)")
     .otherwise(() => name);
 }
 

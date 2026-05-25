@@ -110,6 +110,21 @@
   --color-green-800: hsl(144 76% 18%);
   --color-green-900: hsl(146 80% 11%);
 
+  /* ---- Blue — water (used for droplets / watering UI) -------------------
+     Same construction rules as the other families: saturation rises at the
+     extremes so 100 stays tinted and 900 doesn't muddy; hue nudges slightly
+     toward cyan in the light end (brighter) and toward indigo in the dark
+     end (deeper) without a perceptible color shift. */
+  --color-blue-100: hsl(202 88% 94%);
+  --color-blue-200: hsl(204 84% 84%);
+  --color-blue-300: hsl(206 80% 70%);
+  --color-blue-400: hsl(208 78% 58%);
+  --color-blue-500: hsl(210 82% 50%);
+  --color-blue-600: hsl(212 86% 42%);
+  --color-blue-700: hsl(214 90% 34%);
+  --color-blue-800: hsl(216 92% 24%);
+  --color-blue-900: hsl(218 94% 15%);
+
   /* ---- Semantic aliases -------------------------------------------------
      Components should prefer these over raw scale values so a palette swap
      doesn't require a codebase-wide find-and-replace. */
@@ -143,6 +158,10 @@
   --color-danger: var(--color-red-500);
   --color-danger-hover: var(--color-red-600);
   --color-danger-soft: var(--color-red-100);
+
+  /* Water — semantic alias for droplet / watering affordances */
+  --color-water: var(--color-blue-500);
+  --color-water-soft: var(--color-blue-100);
 }
 
 /* ---------------------------------------------------------------------------

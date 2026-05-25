@@ -142,6 +142,15 @@ export function LiveDotIcon(props: IconProps) {
   );
 }
 
+export function CameraIcon(props: IconProps) {
+  return (
+    <svg {...baseProps} {...props}>
+      <path d="M23 7l-7 5 7 5V7z" />
+      <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+    </svg>
+  );
+}
+
 export function CameraOffIcon(props: IconProps) {
   return (
     <svg {...baseProps} {...props}>

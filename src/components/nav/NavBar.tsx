@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { NavLinks } from "./NavLinks";
 import { GithubStars } from "./GithubStars";
+import { DropletBadge } from "./DropletBadge";
 import { SITE } from "@/lib/site";
 
 export function NavBar() {
@@ -43,8 +44,9 @@ export function NavBar() {
             </div>
           </nav>
 
-          {/* GitHub badge — anchored to the right edge */}
-          <div className="justify-self-end">
+          {/* Right-edge cluster: watering droplets + GitHub badge */}
+          <div className="flex items-center gap-2 justify-self-end sm:gap-3">
+            <DropletBadge />
             <GithubStars />
           </div>
         </div>

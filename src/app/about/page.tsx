@@ -23,11 +23,11 @@ export default function AboutPage() {
         title="Giving my houseplants an agent."
         lead={
           <>
-            {SITE.name} is a little experiment in agentic-fying inanimate
-            objects. It&apos;s a Raspberry Pi hooked to my actual houseplants —
-            sensors, pumps, a camera, the whole thing — then I give it Claude
-            and tools so the plant agent can perform actions like telling you
-            the moisture level of a plant, or watering it.
+            Plantbot is a little experiment in agentic-fying inanimate objects.
+            It&apos;s a Raspberry Pi hooked to my actual houseplants — sensors,
+            pumps, a camera, the whole thing — then I give it Claude and tools
+            so the plant agent can perform actions like telling you the moisture
+            level of a plant, or watering it.
           </>
         }
         className="mx-auto mb-12"

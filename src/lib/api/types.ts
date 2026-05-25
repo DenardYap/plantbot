@@ -56,13 +56,35 @@ export type ReadingsResponse = {
   readings: SensorReadingDTO[];
 };
 
-export type ChatMessage = {
-  role: "user" | "assistant";
+// ---------------------------------------------------------------------------
+// Chat — persistent, paginated, multi-visitor.
+// ---------------------------------------------------------------------------
+
+export type ChatRole = "user" | "assistant";
+
+export type ChatMessageDTO = {
+  id: number;
+  role: ChatRole;
+  authorName: string;
   content: string;
+  toolCalls: { name: string }[] | null;
+  createdAt: string;
 };
 
-export type ChatResponse = {
-  reply: string;
-  toolCalls: { name: string; result: string }[];
-  warning?: string;
+/** Response shape for both the "newest page" and "older page" GETs. */
+export type MessagesPageResponse = {
+  messages: ChatMessageDTO[];
+  hasMore: boolean;
+  oldestId: number | null;
+};
+
+/** Response shape for `?since=<id>` incremental polling. */
+export type MessagesSinceResponse = {
+  messages: ChatMessageDTO[];
+  hasMore: false;
+  oldestId: null;
+};
+
+export type PostMessageResponse = {
+  message: ChatMessageDTO;
 };

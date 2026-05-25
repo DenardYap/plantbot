@@ -115,7 +115,11 @@ export default async function PlantPage({
           />
         </div>
         <div className="lg:col-span-5">
-          <GlobalChat slug={plant.slug} plantName={plant.name} />
+          <GlobalChat
+            slug={plant.slug}
+            plantName={plant.name}
+            plantProfileImageUrl={plant.profileImageUrl}
+          />
         </div>
       </section>
 

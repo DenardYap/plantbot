@@ -1,3 +1,4 @@
+"use client";
 import Link from "next/link";
 import { Card, Eyebrow, Pill } from "@/components/ui";
 import {
@@ -14,6 +15,8 @@ import type {
   PlantDTO,
 } from "@/lib/api/types";
 import { match } from "ts-pattern";
+import { StreamStatusBadge } from "./StreamStatusBadge";
+import { useStreamStatus } from "./useStreamStatus";
 
 function happinessLabel(score: number): string {
   if (score >= 90) return "Thriving";
@@ -46,6 +49,13 @@ export function PlantCard({
   current: CurrentReadings;
   health: HealthSummaryDTO;
 }) {
+  const streamUrl = process.env.NEXT_PUBLIC_PLANT_STREAM_URL;
+  // Real liveness, not just "is the URL configured". Both this and the
+  // <StreamStatusBadge/> below subscribe to the same TanStack query, so
+  // there's only one poll in flight per stream.
+  const streamStatus = useStreamStatus(streamUrl);
+  const showOfflineOverlay = streamStatus === "offline";
+
   return (
     <Card as="article" className="group relative overflow-hidden">
       <Link
@@ -65,16 +75,20 @@ export function PlantCard({
                 alt={plant.name}
                 className="absolute inset-0 h-full w-full object-cover"
               />
-              {/* 20% white wash so the dark headline always meets contrast
-                  without hiding the plant behind it. */}
-              <div aria-hidden className="absolute inset-0 bg-surface/60" />
-              {/* Centered chip — drop shadow gives the text its own depth
-                  layer so it never fights with the photo behind it. */}
-              <div className="absolute inset-0 grid place-items-center px-4 text-center">
-                <p className="text-base font-extrabold tracking-tight text-ink drop-shadow-[0_2px_8px_hsl(0_0%_100%/0.9)] sm:text-lg">
-                  {plant.nickname ?? plant.name} is not live now
-                </p>
-              </div>
+              {/* Scrim + "not live" copy whenever the camera isn't actually
+                  streaming — whether because no stream URL is configured or
+                  because the playlist has gone stale. When live, the photo
+                  acts as a live thumbnail with no overlay. */}
+              {showOfflineOverlay && (
+                <>
+                  <div aria-hidden className="absolute inset-0 bg-surface/60" />
+                  <div className="absolute inset-0 grid place-items-center px-4 text-center">
+                    <p className="text-base font-extrabold tracking-tight text-ink drop-shadow-[0_2px_8px_hsl(0_0%_100%/0.9)] sm:text-lg">
+                      {plant.nickname ?? plant.name} is not live now
+                    </p>
+                  </div>
+                </>
+              )}
             </>
           ) : (
             // Default placeholder — kept intentionally for plants without a
@@ -89,15 +103,22 @@ export function PlantCard({
               </div>
             </>
           )}
-          <Pill
-            tone="neutral"
-            size="sm"
-            uppercase
-            className="absolute left-3 top-3"
-          >
-            <CameraOffIcon className="h-3 w-3" aria-hidden />
-            Camera offline
-          </Pill>
+          {streamUrl ? (
+            <StreamStatusBadge
+              streamUrl={streamUrl}
+              className="absolute left-3 top-3"
+            />
+          ) : (
+            <Pill
+              tone="neutral"
+              size="sm"
+              uppercase
+              className="absolute left-3 top-3"
+            >
+              <CameraOffIcon className="h-3 w-3" aria-hidden />
+              Camera offline
+            </Pill>
+          )}
           <Pill
             tone={pillTone(health.overall)}
             size="sm"

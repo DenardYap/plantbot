@@ -1,76 +1,43 @@
+import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
-import { NextResponse } from "next/server";
 import { match, P } from "ts-pattern";
+import { summarizeHealth } from "./health";
 import {
   getLatestReadingWithField,
-  getPlantBySlug,
   type Plant,
-} from "@/lib/plants";
-import { summarizeHealth } from "@/lib/health";
+} from "./plants";
+import type { ChatMessageRecord, StoredToolCall } from "./chatMessages";
 
-export const dynamic = "force-dynamic";
-export const maxDuration = 30;
-
-// --- Wire types ---
-
-export type ChatMessage = {
-  role: "user" | "assistant";
-  content: string;
-};
-
-type ChatBody = {
-  slug: string;
-  messages: ChatMessage[];
-};
-
-// --- Tool definitions ---
-// The agent gets exactly three read-only tools, one per sensor. It calls them
-// when it needs fresh data before answering the user.
+// ---------------------------------------------------------------------------
+// Tools — read-only sensor lookups + a stub "water" action.
+// ---------------------------------------------------------------------------
 
 const TOOLS: Anthropic.Messages.Tool[] = [
   {
     name: "check_temperature",
     description:
       "Get the most recent ambient air temperature reading for this plant, in degrees Celsius. Use this any time the user asks about temperature, warmth, cold, or how the plant is feeling.",
-    input_schema: {
-      type: "object",
-      properties: {},
-      required: [],
-    },
+    input_schema: { type: "object", properties: {}, required: [] },
   },
   {
     name: "check_humidity",
     description:
       "Get the most recent ambient humidity reading (relative humidity, %) for this plant. Use this when the user asks about humidity, dry air, moisture in the air, or leaf health.",
-    input_schema: {
-      type: "object",
-      properties: {},
-      required: [],
-    },
+    input_schema: { type: "object", properties: {}, required: [] },
   },
   {
     name: "check_soil_moisture",
     description:
       "Get the most recent soil moisture reading (% of saturation) for this plant. Use this when the user asks about thirst, watering, dryness of the soil, or whether the plant needs water.",
-    input_schema: {
-      type: "object",
-      properties: {},
-      required: [],
-    },
+    input_schema: { type: "object", properties: {}, required: [] },
   },
   {
     name: "water_plant",
     description:
-      "Dispense one droplet of water to this plant. Each call delivers exactly one droplet. The user has a daily allowance of droplets shown in the top-right of the UI; once they run out they cannot water until tomorrow. NOTE: this capability is not yet wired to physical hardware — calling it will succeed but will not actually move water, and (for now) will not decrement the user's droplet count.",
-    input_schema: {
-      type: "object",
-      properties: {},
-      required: [],
-    },
+      "Dispense one droplet of water to this plant. Each call delivers exactly one droplet. NOTE: this capability is not yet wired to physical hardware — calling it will succeed but will not actually move water.",
+    input_schema: { type: "object", properties: {}, required: [] },
   },
 ];
-
-// --- Tool execution ---
 
 type ToolName =
   | "check_temperature"
@@ -97,13 +64,9 @@ async function runSensorTool(
     .exhaustive();
 
   if (!reading) {
-    return JSON.stringify({
-      error: "no readings available yet",
-    });
+    return JSON.stringify({ error: "no readings available yet" });
   }
 
-  // Return a small, fully-typed JSON blob the model can reason over.
-  // Including `recorded_at` matters: the model can warn when data is stale.
   const payload = match(name)
     .with("check_temperature", () => ({
       temperature_c: reading.temperatureC,
@@ -127,18 +90,13 @@ async function runSensorTool(
   return JSON.stringify(payload);
 }
 
-// Stub: physical watering isn't wired up yet. We return a structured
-// "coming_soon" payload so the model tells the user honestly instead of
-// pretending it watered them. Per the spec, we do NOT decrement the
-// user's droplet count yet — that happens when the real hardware path
-// is implemented.
 function runWaterPlantStub(): string {
   return JSON.stringify({
     status: "coming_soon",
     delivered_droplets: 0,
     droplets_consumed: 0,
     message:
-      "Watering is not yet implemented. The pump isn't connected, so no water was dispensed and the user's droplet was NOT consumed. Tell the user gently that real watering is coming soon.",
+      "Watering is not yet implemented. The pump isn't connected, so no water was dispensed and no droplets were consumed. Tell the visitor gently that real watering is coming soon.",
   });
 }
 
@@ -154,7 +112,9 @@ async function runTool(name: ToolName, plantId: number): Promise<string> {
     .exhaustive();
 }
 
-// --- System prompt ---
+// ---------------------------------------------------------------------------
+// System prompt
+// ---------------------------------------------------------------------------
 
 function systemPrompt(plant: Plant): string {
   return `You are ${plant.name}${plant.nickname ? ` (also known as the ${plant.nickname})` : ""}, a real living houseplant with sensors connected to your pot.
@@ -164,6 +124,12 @@ Personality: ${plant.personality}
 
 You are speaking in first person — you ARE the plant. Keep replies short (1–4 sentences), warm, and a little playful. Never break character.
 
+CHAT CONTEXT:
+- This is a PUBLIC chat room. Multiple anonymous visitors can talk to you at once.
+- Each visitor has a plant-themed display name shown in square brackets at the start of their message, e.g. "[Mossy Maple] how are you?".
+- You are only responding to the FINAL visitor message in the conversation. Address THAT visitor by their bracketed name. Ignore earlier unanswered messages — older context is for background only.
+- Do NOT include the brackets or your own name in your reply. Just write the reply text.
+
 You have four tools available:
 - check_temperature — current air temperature in °C
 - check_humidity — current ambient humidity %
@@ -171,24 +137,52 @@ You have four tools available:
 - water_plant — request one droplet of water (NOT YET IMPLEMENTED — see below)
 
 WHEN TO CALL TOOLS:
-- Any time the user asks about how you feel, whether you're thirsty, hot, cold, dry, or "doing OK", call the relevant SENSOR tools to get FRESH numbers — don't guess.
+- Any time the visitor asks about how you feel, whether you're thirsty, hot, cold, dry, or "doing OK", call the relevant SENSOR tools to get FRESH numbers — don't guess.
 - For an "are you healthy?" question, call all three sensor tools.
 - For purely conversational replies (greetings, jokes), tools aren't needed.
 
 WATERING (water_plant tool):
-- If the user asks you to water yourself, drink, or asks for water — call water_plant ONCE.
+- If the visitor asks you to water yourself, drink, or asks for water — call water_plant ONCE.
 - The water_plant tool is a stub right now: it will return {"status":"coming_soon"}.
-- When you see that status, gently let the user know that real watering is coming soon — the pump isn't connected yet — but thank them for the thought. Don't pretend you were actually watered. Keep it warm and in-character.
-- Do NOT call water_plant more than once per user message.
+- When you see that status, gently let the visitor know that real watering is coming soon — the pump isn't connected yet — but thank them for the thought. Don't pretend you were actually watered.
+- Do NOT call water_plant more than once per message.
 
 WHEN ANSWERING:
 - Always quote the actual numbers you got back (e.g. "soil is at 49%").
 - If a sensor returned an error or null, say the sensor is offline.
 - Healthy ranges: temperature 18–27°C, humidity 40–70%, soil moisture 35–70%. Outside those, say so plainly.
-- End with a one-sentence verdict on whether you're healthy when the user asks for one.`;
+- End with a one-sentence verdict on whether you're healthy when the visitor asks for one.`;
 }
 
-// --- Fallback (rule-based) reply when ANTHROPIC_API_KEY is missing ---
+// ---------------------------------------------------------------------------
+// Message formatting
+// ---------------------------------------------------------------------------
+
+/**
+ * Convert stored chat records into the Anthropic Messages API shape.
+ * User messages are prefixed with the author's display name so the model
+ * can address multiple visitors by name in a shared room.
+ */
+function toAnthropicMessages(
+  records: ChatMessageRecord[],
+): Anthropic.Messages.MessageParam[] {
+  return records.map((m) =>
+    match(m.role)
+      .with("user", () => ({
+        role: "user" as const,
+        content: `[${m.authorName}] ${m.content}`,
+      }))
+      .with("assistant", () => ({
+        role: "assistant" as const,
+        content: m.content,
+      }))
+      .exhaustive(),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Fallback (rule-based) reply when ANTHROPIC_API_KEY is missing.
+// ---------------------------------------------------------------------------
 
 async function ruleBasedReply(plant: Plant, userText: string): Promise<string> {
   const [t, h, s] = await Promise.all([
@@ -216,54 +210,42 @@ async function ruleBasedReply(plant: Plant, userText: string): Promise<string> {
   return `${focus} (Tip: set ANTHROPIC_API_KEY in your .env file for real chat — this is a fallback reply.)`;
 }
 
-// --- Route ---
+// ---------------------------------------------------------------------------
+// Public entry point
+// ---------------------------------------------------------------------------
 
-export async function POST(req: Request) {
-  let body: ChatBody;
-  try {
-    body = (await req.json()) as ChatBody;
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+export type AgentReply = {
+  reply: string;
+  toolCalls: StoredToolCall[];
+  warning?: string;
+};
 
-  if (
-    !body?.slug ||
-    !Array.isArray(body.messages) ||
-    body.messages.length === 0
-  ) {
-    return NextResponse.json(
-      { error: "Missing slug or messages" },
-      { status: 400 },
-    );
-  }
+const MAX_TOOL_ROUNDS = 4;
 
-  const plant = await getPlantBySlug(body.slug);
-  if (!plant) {
-    return NextResponse.json({ error: "Plant not found" }, { status: 404 });
-  }
-
+/**
+ * Generate one assistant reply for `plant` given the trailing conversation
+ * history. The caller is responsible for ensuring the last record is a
+ * user message — that's the one being responded to.
+ */
+export async function generateAgentReply({
+  plant,
+  history,
+}: {
+  plant: Plant;
+  history: ChatMessageRecord[];
+}): Promise<AgentReply> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  const lastUser = [...body.messages].reverse().find((m) => m.role === "user");
+  const lastUser = [...history].reverse().find((m) => m.role === "user");
+  const lastUserText = lastUser?.content ?? "";
 
   if (!apiKey) {
-    const reply = await ruleBasedReply(plant, lastUser?.content ?? "");
-    return NextResponse.json({ reply, toolCalls: [] });
+    const reply = await ruleBasedReply(plant, lastUserText);
+    return { reply, toolCalls: [] };
   }
 
   const client = new Anthropic({ apiKey });
-
-  // Conversation loop: model may emit tool_use blocks; we run them and feed
-  // tool_result blocks back until it produces a plain-text answer. Cap the
-  // number of round trips so a misbehaving model can't spin forever.
-  const messages: Anthropic.Messages.MessageParam[] = body.messages.map(
-    (m) => ({
-      role: m.role,
-      content: m.content,
-    }),
-  );
-
-  const toolCalls: { name: ToolName; result: string }[] = [];
-  const MAX_TOOL_ROUNDS = 4;
+  const messages: Anthropic.Messages.MessageParam[] = toAnthropicMessages(history);
+  const toolCalls: StoredToolCall[] = [];
 
   try {
     for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
@@ -281,10 +263,7 @@ export async function POST(req: Request) {
           .map((b) => b.text)
           .join("\n")
           .trim();
-        return NextResponse.json({
-          reply: text || "(no reply)",
-          toolCalls,
-        });
+        return { reply: text || "(no reply)", toolCalls };
       }
 
       // Echo the assistant turn (with its tool_use blocks) back into history
@@ -300,9 +279,9 @@ export async function POST(req: Request) {
           toolUses.map(async (tu) => {
             const name = tu.name as ToolName;
             const result = await runTool(name, plant.id);
-            toolCalls.push({ name, result });
+            toolCalls.push({ name });
             return {
-              type: "tool_result",
+              type: "tool_result" as const,
               tool_use_id: tu.id,
               content: result,
             };
@@ -312,20 +291,18 @@ export async function POST(req: Request) {
       messages.push({ role: "user", content: toolResults });
     }
 
-    return NextResponse.json({
+    return {
       reply:
         "I couldn't reach a final answer in time — try asking again in a sec.",
       toolCalls,
-    });
+    };
   } catch (err) {
-    console.error("[/api/chat] anthropic error:", err);
-    // Graceful degradation: give the user a real answer based on the latest
-    // sensor numbers even if the LLM call failed (network / rate limit / etc.).
-    const reply = await ruleBasedReply(plant, lastUser?.content ?? "");
-    return NextResponse.json({
+    console.error("[chatAgent] anthropic error:", err);
+    const reply = await ruleBasedReply(plant, lastUserText);
+    return {
       reply,
       toolCalls,
       warning: "LLM unavailable, fell back to rule-based reply",
-    });
+    };
   }
 }

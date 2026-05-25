@@ -1,9 +1,11 @@
 "use client";
 import { match } from "ts-pattern";
-import { CameraIcon } from "@/components/icons";
+import { CameraIcon, LoaderIcon } from "@/components/icons";
 import { Card, Pill } from "@/components/ui";
+import { HERO_ROW_HEIGHT_LG_CLASS } from "../layout";
 import { useHlsPlayer } from "./useHlsPlayer";
 import { OfflinePlaceholder } from "./OfflinePlaceholder";
+import { useStreamStatus } from "../useStreamStatus";
 
 export function LiveStream({
   src,
@@ -16,9 +18,18 @@ export function LiveStream({
   displayName?: string | null;
   profileImageUrl?: string | null;
 }) {
-  const { videoRef, status } = useHlsPlayer(src);
+  // Independent liveness check on the playlist itself. hls.js will happily
+  // keep painting buffered frames after the encoder dies (the file is still
+  // reachable, it just isn't growing), so we can't rely on player events
+  // alone to swap in the offline placeholder.
+  const streamStatus = useStreamStatus(src);
+  // Detach hls.js the moment the playlist check confirms offline —
+  // passing null tears down the player and clears the buffer.
+  const { videoRef, status } = useHlsPlayer(
+    streamStatus === "offline" ? null : src,
+  );
 
-  if (status === "error") {
+  if (streamStatus === "offline" || status === "error") {
     return (
       <OfflinePlaceholder
         plantName={plantName}
@@ -29,8 +40,10 @@ export function LiveStream({
   }
 
   return (
-    <Card className="overflow-hidden">
-      <div className="relative aspect-video w-full bg-surface-sunken">
+    <Card className={`overflow-hidden ${HERO_ROW_HEIGHT_LG_CLASS}`}>
+      <div
+        className={`relative aspect-video w-full bg-surface-sunken lg:aspect-auto ${HERO_ROW_HEIGHT_LG_CLASS}`}
+      >
         {/* The <video> element is always mounted so hls.js can attach to it,
             but hidden until the first fragment arrives. */}
         <video
@@ -69,8 +82,8 @@ export function LiveStream({
                 uppercase
                 className="absolute left-4 top-4"
               >
-                <span
-                  className="h-2 w-2 animate-pulse rounded-full bg-current"
+                <LoaderIcon
+                  className="h-3 w-3 animate-spin"
                   aria-hidden
                 />
                 Connecting…

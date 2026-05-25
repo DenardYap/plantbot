@@ -1,5 +1,6 @@
 import { CameraOffIcon } from "@/components/icons";
 import { Card, Pill } from "@/components/ui";
+import { HERO_ROW_HEIGHT_LG_CLASS } from "../layout";
 
 export function OfflinePlaceholder({
   plantName,
@@ -13,8 +14,10 @@ export function OfflinePlaceholder({
   const label = displayName || plantName;
 
   return (
-    <Card className="overflow-hidden">
-      <div className="relative aspect-video w-full bg-surface-sunken">
+    <Card className={`overflow-hidden ${HERO_ROW_HEIGHT_LG_CLASS}`}>
+      <div
+        className={`relative aspect-video w-full bg-surface-sunken lg:aspect-auto ${HERO_ROW_HEIGHT_LG_CLASS}`}
+      >
         {profileImageUrl ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}

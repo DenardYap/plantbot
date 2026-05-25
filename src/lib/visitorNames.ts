@@ -1,0 +1,61 @@
+// Plant-themed display names for anonymous chat visitors. 50 entries —
+// enough variety that a given room rarely sees collisions, small enough
+// to keep the list scannable.
+export const VISITOR_NAMES: readonly string[] = [
+  "Mossy Maple",
+  "Sunny Sunflower",
+  "Curious Cactus",
+  "Bashful Basil",
+  "Friendly Fern",
+  "Jolly Juniper",
+  "Sleepy Sage",
+  "Happy Hydrangea",
+  "Witty Willow",
+  "Cheery Cherry",
+  "Plucky Pansy",
+  "Drowsy Daisy",
+  "Mellow Magnolia",
+  "Breezy Bamboo",
+  "Cozy Clover",
+  "Dapper Dandelion",
+  "Earnest Eucalyptus",
+  "Fancy Fig",
+  "Giddy Ginkgo",
+  "Hopeful Holly",
+  "Idle Ivy",
+  "Jaunty Jasmine",
+  "Kind Kalanchoe",
+  "Lively Lavender",
+  "Mighty Mint",
+  "Nimble Nettle",
+  "Oaken Orchid",
+  "Perky Petunia",
+  "Quirky Quince",
+  "Rosy Rosemary",
+  "Sprightly Spinach",
+  "Tender Thyme",
+  "Upbeat Umbrella Plant",
+  "Velvety Violet",
+  "Wandering Wisteria",
+  "Xeric Xylophyta",
+  "Yawning Yarrow",
+  "Zesty Zinnia",
+  "Wobbly Wheatgrass",
+  "Smiley Snapdragon",
+  "Pensive Peony",
+  "Bouncy Begonia",
+  "Glowing Goldenrod",
+  "Patient Palm",
+  "Quiet Quaking Aspen",
+  "Roaming Radish",
+  "Shy Strawberry",
+  "Toasty Tulip",
+  "Lucky Lily",
+  "Brave Buttercup",
+] as const;
+
+/** Deterministically random index. Used by the store to pick a name once. */
+export function randomVisitorName(): string {
+  const idx = Math.floor(Math.random() * VISITOR_NAMES.length);
+  return VISITOR_NAMES[idx] ?? "Mystery Sprout";
+}

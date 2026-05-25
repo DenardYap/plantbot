@@ -2,10 +2,11 @@
 // data-fetching rule. Each function returns parsed JSON or throws.
 
 import type {
-  ChatMessage,
-  ChatResponse,
   HistoryWindow,
+  MessagesPageResponse,
+  MessagesSinceResponse,
   PlantDetailResponse,
+  PostMessageResponse,
   ReadingsResponse,
 } from "./types";
 
@@ -38,9 +39,27 @@ export const api = {
       `/api/plants/${slug}/readings?window=${window}`,
     ),
 
-  chat: (slug: string, messages: ChatMessage[]) =>
-    jsonFetch<ChatResponse>(`/api/chat`, {
+  /** Newest page of chat history (latest N messages, oldest → newest). */
+  messagesLatest: (slug: string, limit = 30) =>
+    jsonFetch<MessagesPageResponse>(
+      `/api/plants/${slug}/messages?limit=${limit}`,
+    ),
+
+  /** Page of messages strictly older than `beforeId`. */
+  messagesBefore: (slug: string, beforeId: number, limit = 30) =>
+    jsonFetch<MessagesPageResponse>(
+      `/api/plants/${slug}/messages?before=${beforeId}&limit=${limit}`,
+    ),
+
+  /** Incremental poll — only messages with id > sinceId. */
+  messagesSince: (slug: string, sinceId: number) =>
+    jsonFetch<MessagesSinceResponse>(
+      `/api/plants/${slug}/messages?since=${sinceId}`,
+    ),
+
+  postMessage: (slug: string, authorName: string, content: string) =>
+    jsonFetch<PostMessageResponse>(`/api/plants/${slug}/messages`, {
       method: "POST",
-      body: JSON.stringify({ slug, messages }),
+      body: JSON.stringify({ authorName, content }),
     }),
 };

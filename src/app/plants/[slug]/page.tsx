@@ -9,15 +9,10 @@ import { AgentActivity } from "@/components/plants/AgentActivity";
 import { PlantFacts } from "@/components/plants/PlantFacts";
 import { PlantStatsChart } from "@/components/plants/PlantStatsChart";
 import { StatTilesLive } from "@/components/plants/StatTilesLive";
-import { getPlantBySlug, listPlants } from "@/lib/plants";
+import { getPlantBySlug } from "@/lib/plants";
 import { SITE } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
-
-export async function generateStaticParams() {
-  const plants = await listPlants();
-  return plants.map((p) => ({ slug: p.slug }));
-}
 
 export async function generateMetadata({
   params,

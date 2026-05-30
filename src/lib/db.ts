@@ -20,11 +20,21 @@ function getPool(): Pool {
     connectionString: process.env.DATABASE_URL,
     // Render Postgres requires SSL.
     ssl: { rejectUnauthorized: false },
+    // Keep this well under Render's free-tier connection cap — the Pi also
+    // holds connections, and several web instances may share the DB.
     max: 5,
     idleTimeoutMillis: 30_000,
+    // Don't let a borrowed connection hang forever if the DB is saturated;
+    // fail fast so the request can surface an error instead of blocking.
+    connectionTimeoutMillis: 10_000,
   });
 
-  if (process.env.NODE_ENV !== "production") globalForPg.__pgPool = pool;
+  // Cache the pool for the lifetime of the process — in BOTH dev and prod.
+  // Previously this was dev-only, which meant production created a brand-new
+  // Pool (up to `max` connections) on every query() call and never released
+  // them, quickly exhausting Postgres connection slots (error 53300). Caching
+  // on globalThis also survives Next.js dev hot-reload without stacking pools.
+  globalForPg.__pgPool = pool;
   return pool;
 }
 

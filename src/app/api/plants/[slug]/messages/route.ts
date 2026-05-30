@@ -20,7 +20,7 @@ export type ChatMessageDTO = {
   role: "user" | "assistant";
   authorName: string;
   content: string;
-  toolCalls: { name: string }[] | null;
+  toolCalls: { name: string; status?: string }[] | null;
   createdAt: string;
 };
 
@@ -108,6 +108,13 @@ export async function GET(
 type PostBody = {
   authorName?: string;
   content?: string;
+  /**
+   * Client-side flag: does the visitor have at least one droplet to spend
+   * on watering this turn? Used by the chat agent to refuse `water_plant`
+   * tool calls from out-of-droplets visitors. Defaults to `true` if the
+   * client doesn't send it (legacy clients).
+   */
+  wateringAllowed?: boolean;
 };
 
 export async function POST(
@@ -155,6 +162,7 @@ export async function POST(
       role: "user",
       authorName: cleanAuthor,
       content: cleanContent,
+      wateringAllowed: body.wateringAllowed ?? true,
     });
 
     // Kick the responder. Fire-and-forget — POST returns as soon as the

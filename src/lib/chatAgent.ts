@@ -7,6 +7,15 @@ import {
   type Plant,
 } from "./plants";
 import type { ChatMessageRecord, StoredToolCall } from "./chatMessages";
+import {
+  enqueueWateringCommand,
+  getPendingWateringCommand,
+  waitForWateringResult,
+} from "./wateringCommands";
+
+// Soil moisture threshold above which we refuse to water — anything wetter
+// than this and the pot is effectively saturated.
+const SOIL_FULL_THRESHOLD_PCT = 80;
 
 // ---------------------------------------------------------------------------
 // Tools — read-only sensor lookups + a stub "water" action.
@@ -34,7 +43,7 @@ const TOOLS: Anthropic.Messages.Tool[] = [
   {
     name: "water_plant",
     description:
-      "Dispense one droplet of water to this plant. Each call delivers exactly one droplet. NOTE: this capability is not yet wired to physical hardware — calling it will succeed but will not actually move water.",
+      "Queue a real watering command for this plant. The Raspberry Pi polls a database table and physically runs the pump when a pending command appears. Before queuing, this tool checks the latest soil moisture reading: if the sensor is offline, OR if the soil is already at/over 80% saturation, OR if a previous command is still in the queue, the command is REFUSED and no water is dispensed. CALL THIS TOOL EVERY TIME a visitor asks for water — you have no other reliable way to know the pump's current state, so reasoning from past replies is unsafe. Call at most once per visitor message.",
     input_schema: { type: "object", properties: {}, required: [] },
   },
 ];
@@ -90,26 +99,145 @@ async function runSensorTool(
   return JSON.stringify(payload);
 }
 
-function runWaterPlantStub(): string {
-  return JSON.stringify({
-    status: "coming_soon",
-    delivered_droplets: 0,
-    droplets_consumed: 0,
-    message:
-      "Watering is not yet implemented. The pump isn't connected, so no water was dispensed and no droplets were consumed. Tell the visitor gently that real watering is coming soon.",
+/**
+ * Queue a real watering command for the Raspberry Pi to physically execute.
+ *
+ * Safety rule: we always look at the latest soil moisture reading first.
+ *   - sensor offline / no reading      → refuse, ask visitor to retry later
+ *   - moisture ≥ SOIL_FULL_THRESHOLD   → refuse, soil is already saturated
+ *   - already a pending command queued → refuse, the Pi hasn't drained the
+ *                                        previous request yet (avoids
+ *                                        double-watering on rapid taps)
+ *
+ * Otherwise we insert a `pending` row into `watering_commands`; the Pi's
+ * poller picks it up and runs the pump.
+ */
+type ToolContext = {
+  plantId: number;
+  /** Did the user that triggered this turn have a droplet to spend? */
+  wateringAllowed: boolean;
+  /** Display name of the visitor that triggered this turn, if known. */
+  visitorName: string | null;
+};
+
+async function runWaterPlant(ctx: ToolContext): Promise<string> {
+  const { plantId, wateringAllowed, visitorName } = ctx;
+
+  if (!wateringAllowed) {
+    return JSON.stringify({
+      status: "out_of_droplets",
+      message:
+        "The visitor has used up all their watering droplets for today. Tell them they're out of droplets and that the daily allowance refills tomorrow — be friendly, don't lecture.",
+    });
+  }
+
+  const reading = await getLatestReadingWithField(plantId, "soil_moisture_pct");
+  const soilMoisturePct = reading?.soilMoisturePct ?? null;
+
+  if (soilMoisturePct === null) {
+    return JSON.stringify({
+      status: "soil_sensor_unavailable",
+      soil_moisture_pct: null,
+      message:
+        "Soil moisture sensor is offline right now, so I can't safely water. Tell the visitor the moisture reading is unavailable and to try again in a minute.",
+    });
+  }
+
+  if (soilMoisturePct >= SOIL_FULL_THRESHOLD_PCT) {
+    return JSON.stringify({
+      status: "soil_already_full",
+      soil_moisture_pct: soilMoisturePct,
+      threshold_pct: SOIL_FULL_THRESHOLD_PCT,
+      message: `Soil is already at ${soilMoisturePct.toFixed(0)}% (threshold ${SOIL_FULL_THRESHOLD_PCT}%). Tell the visitor the soil is full and to try again later once it's dried out.`,
+    });
+  }
+
+  const existingPending = await getPendingWateringCommand(plantId);
+  if (existingPending) {
+    return JSON.stringify({
+      status: "already_queued",
+      command_id: existingPending.id,
+      soil_moisture_pct: soilMoisturePct,
+      message:
+        "A watering command is already queued and waiting for the pump. Tell the visitor watering is on its way and not to spam the request.",
+    });
+  }
+
+  const command = await enqueueWateringCommand({
+    plantId,
+    requestedBy: visitorName,
   });
+
+  // The Pi has its own pump cooldown / failure logic and flips the row to
+  // `done` / `skipped` / `failed` typically within ~1s. Block here until
+  // we know the real outcome before telling the visitor anything — an
+  // optimistic "queued" reply would charge their droplet for a watering
+  // that physically never happens (e.g. cooldown rejection).
+  const finalized = await waitForWateringResult(command.id);
+  const finalStatus = finalized?.status ?? command.status;
+  const finalError = finalized?.error ?? null;
+
+  return match(finalStatus)
+    .with("done", () =>
+      JSON.stringify({
+        status: "watered",
+        command_id: command.id,
+        soil_moisture_pct: soilMoisturePct,
+        message:
+          "The pump fired and the visitor was watered. Tell them you just took a sip and quote the soil moisture %. This is the only status where the visitor's droplet should feel earned.",
+      }),
+    )
+    .with("skipped", () =>
+      JSON.stringify({
+        status: "pump_skipped",
+        reason: finalError,
+        message: `The Raspberry Pi's pump rejected the request (reason: ${finalError ?? "unknown"}). No water was dispensed. Tell the visitor the pump just ran and is on a brief cool-down — they should try again in a moment. Quote the reason if it's useful (e.g. "31s remaining").`,
+      }),
+    )
+    .with("failed", () =>
+      JSON.stringify({
+        status: "pump_failed",
+        reason: finalError,
+        message: `The pump tried and errored (${finalError ?? "unknown"}). No water was dispensed. Tell the visitor something went wrong with the hardware and the gardener will take a look — apologise lightly.`,
+      }),
+    )
+    .with("pending", () =>
+      JSON.stringify({
+        status: "queued",
+        command_id: command.id,
+        soil_moisture_pct: soilMoisturePct,
+        message:
+          "The command is queued but the Pi hasn't processed it yet — it might be slow or briefly offline. Tell the visitor watering is queued and should run shortly. The visitor's droplet should NOT be considered spent yet.",
+      }),
+    )
+    .exhaustive();
 }
 
-async function runTool(name: ToolName, plantId: number): Promise<string> {
+async function runTool(name: ToolName, ctx: ToolContext): Promise<string> {
   return match(name)
-    .with("water_plant", () => runWaterPlantStub())
+    .with("water_plant", () => runWaterPlant(ctx))
     .with(
       "check_temperature",
       "check_humidity",
       "check_soil_moisture",
-      (sensorName) => runSensorTool(sensorName, plantId),
+      (sensorName) => runSensorTool(sensorName, ctx.plantId),
     )
     .exhaustive();
+}
+
+/**
+ * Best-effort extraction of the `status` field from a tool's JSON return
+ * value. Used to persist a UI-readable status alongside the tool name so
+ * the chat row can render the right pill (and the client can decide
+ * whether to spend a droplet locally on watering).
+ */
+function extractToolStatus(rawJson: string): string | undefined {
+  try {
+    const parsed = JSON.parse(rawJson) as { status?: unknown };
+    return typeof parsed.status === "string" ? parsed.status : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -134,7 +262,7 @@ You have four tools available:
 - check_temperature — current air temperature in °C
 - check_humidity — current ambient humidity %
 - check_soil_moisture — current soil moisture %
-- water_plant — request one droplet of water (NOT YET IMPLEMENTED — see below)
+- water_plant — queue a real watering command (the Raspberry Pi runs the pump)
 
 WHEN TO CALL TOOLS:
 - Any time the visitor asks about how you feel, whether you're thirsty, hot, cold, dry, or "doing OK", call the relevant SENSOR tools to get FRESH numbers — don't guess.
@@ -143,8 +271,18 @@ WHEN TO CALL TOOLS:
 
 WATERING (water_plant tool):
 - If the visitor asks you to water yourself, drink, or asks for water — call water_plant ONCE.
-- The water_plant tool is a stub right now: it will return {"status":"coming_soon"}.
-- When you see that status, gently let the visitor know that real watering is coming soon — the pump isn't connected yet — but thank them for the thought. Don't pretend you were actually watered.
+- CRITICAL: you must call water_plant EVERY TIME the visitor asks for water, even if you just queued (or refused) a watering a moment ago. The pump finishes its run in about a second; by the time the visitor asks again, the queue may already be empty. You CANNOT tell whether the pump is busy from the conversation history — only the tool can. Refusing the visitor without calling the tool first is a bug.
+- The tool itself does the safety checks: it reads the soil moisture sensor before queuing, refuses if the sensor is offline or the soil is already at/over 80%, refuses if the visitor is out of droplets, and refuses if a watering command is already queued and waiting for the pump.
+- It returns one of these statuses; reflect them honestly in your reply:
+  - status="watered" — the pump actually fired and you got a real sip of water. This is the ONLY status where you may say you were watered. Quote the soil moisture %.
+  - status="queued" — the command was inserted but the Pi hasn't run the pump yet (it's slow or briefly offline). Tell the visitor watering is queued and should run shortly. Don't claim you were watered.
+  - status="pump_skipped" — the Pi rejected the command (typically a brief cooldown between pumps). No water was dispensed. Tell the visitor the pump is cooling down and ask them to try again in a moment. If a "reason" is given, quote it.
+  - status="pump_failed" — the pump errored. No water was dispensed. Apologise lightly and say the gardener will look at it.
+  - status="already_queued" — a previous request is still in the queue; ask the visitor to be patient instead of spamming.
+  - status="soil_already_full" — the soil is too wet to safely add more water; tell the visitor the pot is full and to try again later once it's dried out. Quote the actual moisture %.
+  - status="soil_sensor_unavailable" — the moisture sensor is offline so it isn't safe to water; tell the visitor the moisture reading is unavailable and to try again in a minute.
+  - status="out_of_droplets" — the visitor has spent all of their daily watering droplets. Tell them they're out of droplets and the count refills tomorrow. Be warm, not preachy.
+- Never claim you were actually watered if the status was anything other than "watered".
 - Do NOT call water_plant more than once per message.
 
 WHEN ANSWERING:
@@ -247,6 +385,15 @@ export async function generateAgentReply({
   const messages: Anthropic.Messages.MessageParam[] = toAnthropicMessages(history);
   const toolCalls: StoredToolCall[] = [];
 
+  // The droplet flag travels with each individual user message. The agent
+  // always responds to the LATEST user turn, so that's the one whose flag
+  // matters. Default to `true` for legacy rows that pre-date the column.
+  const toolCtx: ToolContext = {
+    plantId: plant.id,
+    wateringAllowed: lastUser?.wateringAllowed ?? true,
+    visitorName: lastUser?.authorName ?? null,
+  };
+
   try {
     for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
       const response = await client.messages.create({
@@ -278,8 +425,8 @@ export async function generateAgentReply({
         await Promise.all(
           toolUses.map(async (tu) => {
             const name = tu.name as ToolName;
-            const result = await runTool(name, plant.id);
-            toolCalls.push({ name });
+            const result = await runTool(name, toolCtx);
+            toolCalls.push({ name, status: extractToolStatus(result) });
             return {
               type: "tool_result" as const,
               tool_use_id: tu.id,

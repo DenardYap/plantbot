@@ -9,6 +9,7 @@ import { AgentActivity } from "@/components/plants/AgentActivity";
 import { PlantFacts } from "@/components/plants/PlantFacts";
 import { PlantStatsChart } from "@/components/plants/PlantStatsChart";
 import { StatTilesLive } from "@/components/plants/StatTilesLive";
+import { WateringHistory } from "@/components/plants/WateringHistory";
 import { getPlantBySlug } from "@/lib/plants";
 import { SITE } from "@/lib/site";
 
@@ -123,18 +124,30 @@ export default async function PlantPage({
         </div>
       </section>
 
-      {/* Row 2: live agent activity + live stat tiles */}
-      <section className="mt-4 grid grid-cols-1 gap-4 sm:mt-6 sm:gap-6 lg:grid-cols-12">
-        <div className="lg:col-span-7">
-          <AgentActivity slug={plant.slug} />
+      {/* Row 2: watering log + live stat tiles.
+          On lg+, the stat column (normal flow) sets the row height; the
+          watering card is taken out of flow (absolute) so its long list
+          can't stretch the row — it fills the stat column's height and
+          scrolls internally instead. */}
+      <section className="mt-4 grid grid-cols-1 gap-4 sm:mt-6 sm:gap-6 lg:grid-cols-12 lg:items-stretch">
+        <div className="lg:relative lg:col-span-7">
+          <div className="lg:absolute lg:inset-0">
+            <WateringHistory slug={plant.slug} />
+          </div>
         </div>
         <div className="lg:col-span-5">
           <StatTilesLive slug={plant.slug} />
         </div>
       </section>
 
-      <section className="mt-4 sm:mt-6">
-        <PlantFacts plant={plant} />
+      {/* Row 3: agent activity + plant facts */}
+      <section className="mt-4 grid grid-cols-1 gap-4 sm:mt-6 sm:gap-6 lg:grid-cols-12">
+        <div className="lg:col-span-7">
+          <AgentActivity slug={plant.slug} />
+        </div>
+        <div className="lg:col-span-5">
+          <PlantFacts plant={plant} />
+        </div>
       </section>
 
       <section className="mt-4 sm:mt-6">

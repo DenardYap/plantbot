@@ -16,6 +16,10 @@ const LIVE_REFETCH_MS = 30_000;
 // turns within a couple of frames of them landing in the DB.
 const CHAT_POLL_MS = 2_000;
 const CHAT_PAGE_SIZE = 30;
+// The Pi flips a watering row from `pending` → `done` within ~1s of the
+// pump firing. A 5s poll is plenty to see status flips and brand-new
+// commands without overloading the DB on a busy chat.
+const WATERINGS_POLL_MS = 5_000;
 
 export function usePlantDetail(slug: string) {
   return useQuery({
@@ -103,11 +107,26 @@ export function useChatMessages(slug: string): UseChatMessagesResult {
   };
 }
 
+export function useWaterings(slug: string) {
+  return useQuery({
+    queryKey: ["waterings", slug],
+    queryFn: () => api.waterings(slug),
+    refetchInterval: WATERINGS_POLL_MS,
+  });
+}
+
 export function useSendMessage(slug: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ authorName, content }: { authorName: string; content: string }) =>
-      api.postMessage(slug, authorName, content),
+    mutationFn: ({
+      authorName,
+      content,
+      wateringAllowed,
+    }: {
+      authorName: string;
+      content: string;
+      wateringAllowed: boolean;
+    }) => api.postMessage(slug, authorName, content, wateringAllowed),
     onSuccess: () => {
       // Refetch the live page so the visitor sees their own bubble
       // immediately instead of waiting for the next poll tick.

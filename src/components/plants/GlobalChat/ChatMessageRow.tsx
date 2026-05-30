@@ -10,12 +10,23 @@ function formatTime(iso: string): string {
   });
 }
 
-function toolLabel(name: string): string {
+function toolLabel(name: string, status?: string): string {
   return match(name)
     .with("check_temperature", () => "checked temperature")
     .with("check_humidity", () => "checked humidity")
     .with("check_soil_moisture", () => "checked soil moisture")
-    .with("water_plant", () => "tried to water (coming soon)")
+    .with("water_plant", () =>
+      match(status)
+        .with("watered", () => "watered the plant")
+        .with("queued", () => "watering queued")
+        .with("pump_skipped", () => "skipped — pump cooling down")
+        .with("pump_failed", () => "skipped — pump error")
+        .with("already_queued", () => "watering already queued")
+        .with("soil_already_full", () => "skipped — soil already full")
+        .with("soil_sensor_unavailable", () => "skipped — sensor offline")
+        .with("out_of_droplets", () => "skipped — out of droplets")
+        .otherwise(() => "tried to water"),
+    )
     .otherwise(() => name);
 }
 
@@ -78,7 +89,7 @@ export function ChatMessageRow({
               <li key={i}>
                 <Pill tone="neutral" size="sm">
                   <ToolIcon className="h-3 w-3" aria-hidden />
-                  {toolLabel(tc.name)}
+                  {toolLabel(tc.name, tc.status)}
                 </Pill>
               </li>
             ))}

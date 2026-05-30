@@ -62,12 +62,18 @@ export type ReadingsResponse = {
 
 export type ChatRole = "user" | "assistant";
 
+export type ChatToolCallDTO = {
+  name: string;
+  /** Optional sub-status from the tool, e.g. "queued" / "out_of_droplets". */
+  status?: string;
+};
+
 export type ChatMessageDTO = {
   id: number;
   role: ChatRole;
   authorName: string;
   content: string;
-  toolCalls: { name: string }[] | null;
+  toolCalls: ChatToolCallDTO[] | null;
   createdAt: string;
 };
 
@@ -87,4 +93,32 @@ export type MessagesSinceResponse = {
 
 export type PostMessageResponse = {
   message: ChatMessageDTO;
+};
+
+// ---------------------------------------------------------------------------
+// Watering history — every command queued for the Pi (chat-driven or not).
+// ---------------------------------------------------------------------------
+
+/**
+ * Mirrors the `status` column on `watering_commands`. The Pi controls this
+ * vocabulary — `done` (completed cleanly), `failed` (pump errored),
+ * `skipped` (Pi declined, e.g. cooldown active), or `pending` (still in
+ * the queue waiting for the next poll cycle).
+ */
+export type WateringStatus = "pending" | "done" | "failed" | "skipped";
+
+export type WateringCommandDTO = {
+  id: number;
+  status: WateringStatus;
+  source: string;
+  /** Display name of the visitor that triggered the command, if known. */
+  requestedBy: string | null;
+  durationMs: number;
+  createdAt: string;
+  executedAt: string | null;
+  error: string | null;
+};
+
+export type WateringsResponse = {
+  waterings: WateringCommandDTO[];
 };

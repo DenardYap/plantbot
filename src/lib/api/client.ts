@@ -8,6 +8,7 @@ import type {
   PlantDetailResponse,
   PostMessageResponse,
   ReadingsResponse,
+  WateringsResponse,
 } from "./types";
 
 async function jsonFetch<T>(input: string, init?: RequestInit): Promise<T> {
@@ -57,9 +58,20 @@ export const api = {
       `/api/plants/${slug}/messages?since=${sinceId}`,
     ),
 
-  postMessage: (slug: string, authorName: string, content: string) =>
+  postMessage: (
+    slug: string,
+    authorName: string,
+    content: string,
+    wateringAllowed: boolean,
+  ) =>
     jsonFetch<PostMessageResponse>(`/api/plants/${slug}/messages`, {
       method: "POST",
-      body: JSON.stringify({ authorName, content }),
+      body: JSON.stringify({ authorName, content, wateringAllowed }),
     }),
+
+  /** Recent watering commands for a plant (newest first). */
+  waterings: (slug: string, limit = 20) =>
+    jsonFetch<WateringsResponse>(
+      `/api/plants/${slug}/waterings?limit=${limit}`,
+    ),
 };

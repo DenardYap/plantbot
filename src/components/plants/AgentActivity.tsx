@@ -11,13 +11,7 @@ import {
 import { Card, IconBadge, Pill, SectionHeader } from "@/components/ui";
 import { usePlantDetail } from "@/lib/api/hooks";
 import type { Status } from "@/lib/health";
-
-function relativeTime(ms: number): string {
-  if (ms < 60_000) return `${Math.max(1, Math.round(ms / 1000))}s ago`;
-  if (ms < 3_600_000) return `${Math.round(ms / 60_000)}m ago`;
-  if (ms < 86_400_000) return `${Math.round(ms / 3_600_000)}h ago`;
-  return `${Math.round(ms / 86_400_000)}d ago`;
-}
+import { relativeTime } from "@/lib/time";
 
 function toneFor(s: Status): "success" | "warning" | "danger" | "neutral" {
   return match(s)

@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Card, Eyebrow, Pill } from "@/components/ui";
 import { useChatMessages, useSendMessage } from "@/lib/api/hooks";
+import { useDropletsStore } from "@/stores/useDropletsStore";
 import { useEnsureVisitor, useVisitorStore } from "@/stores/useVisitorStore";
 import { HERO_ROW_HEIGHT_LG_CLASS } from "../layout";
 import { ChatInputForm } from "./ChatInputForm";
@@ -68,10 +69,70 @@ export function GlobalChat({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isInitialLoading]);
 
+  // -- Droplet bookkeeping -------------------------------------------------
+  //
+  // Droplets are spent client-side: when an *assistant* message appears
+  // confirming a `water_plant` tool call with status="watered" (the Pi
+  // actually fired the pump), and the user turn it was replying to was
+  // authored by the current visitor, we burn one droplet from the local
+  // store. We track the highest message id we've already reacted to in a
+  // ref so the same assistant message never decrements twice (the live
+  // poll re-fetches the same rows every 2s).
+  //
+  // We deliberately do NOT decrement on status="queued" — that's
+  // optimistic and can be invalidated by the Pi (e.g. cooldown skip), so
+  // charging on "queued" lets visitors lose droplets to waterings that
+  // physically never happened.
+  //
+  // The "first batch" (chat history fetched on mount) is ignored — those
+  // watering events happened before this session started and were already
+  // accounted for in localStorage at the time.
+  const lastReactedIdRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (rowMessages.length === 0 || !visitorName) return;
+    const maxId = rowMessages[rowMessages.length - 1].id;
+    if (lastReactedIdRef.current === null) {
+      lastReactedIdRef.current = maxId;
+      return;
+    }
+    const cutoff = lastReactedIdRef.current;
+    for (let i = 0; i < rowMessages.length; i++) {
+      const msg = rowMessages[i];
+      if (msg.id <= cutoff) continue;
+      if (msg.role !== "assistant") continue;
+      const watered = msg.toolCalls?.some(
+        (tc) => tc.name === "water_plant" && tc.status === "watered",
+      );
+      if (!watered) continue;
+      // Find the user turn this assistant message replied to (most recent
+      // preceding user message).
+      let triggerAuthor: string | null = null;
+      for (let j = i - 1; j >= 0; j--) {
+        if (rowMessages[j].role === "user") {
+          triggerAuthor = rowMessages[j].authorName;
+          break;
+        }
+      }
+      if (triggerAuthor === visitorName) {
+        useDropletsStore.getState().useDroplet();
+      }
+    }
+    lastReactedIdRef.current = maxId;
+  }, [rowMessages, visitorName]);
+
   const handleSend = async (text: string) => {
     if (!visitorName) return;
+    // Snapshot droplet state at send time so the agent sees an authoritative
+    // flag for THIS message. Refill first in case the tab crossed midnight.
+    const droplets = useDropletsStore.getState();
+    droplets.refillIfNewDay();
+    const wateringAllowed = useDropletsStore.getState().count > 0;
     try {
-      await sendMessage.mutateAsync({ authorName: visitorName, content: text });
+      await sendMessage.mutateAsync({
+        authorName: visitorName,
+        content: text,
+        wateringAllowed,
+      });
       scrollToBottom();
     } catch {
       // The mutation's `isError` state already surfaces the failure; we

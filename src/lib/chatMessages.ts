@@ -16,13 +16,14 @@ function ensureSchema(): Promise<void> {
   schemaPromise = (async () => {
     await query(
       `CREATE TABLE IF NOT EXISTS chat_messages (
-         id           BIGSERIAL PRIMARY KEY,
-         plant_id     INTEGER     NOT NULL REFERENCES plants(id) ON DELETE CASCADE,
-         role         TEXT        NOT NULL CHECK (role IN ('user', 'assistant')),
-         author_name  TEXT        NOT NULL,
-         content      TEXT        NOT NULL,
-         tool_calls   JSONB,
-         created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+         id                BIGSERIAL PRIMARY KEY,
+         plant_id          INTEGER     NOT NULL REFERENCES plants(id) ON DELETE CASCADE,
+         role              TEXT        NOT NULL CHECK (role IN ('user', 'assistant')),
+         author_name       TEXT        NOT NULL,
+         content           TEXT        NOT NULL,
+         tool_calls        JSONB,
+         watering_allowed  BOOLEAN     NOT NULL DEFAULT true,
+         created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
        )`,
     );
     // Latest-N lookups and "older than X" pagination both filter by plant
@@ -30,6 +31,13 @@ function ensureSchema(): Promise<void> {
     await query(
       `CREATE INDEX IF NOT EXISTS chat_messages_plant_id_id_idx
          ON chat_messages (plant_id, id DESC)`,
+    );
+    // Backfill the column for installations created before droplet-gating
+    // existed. ADD COLUMN IF NOT EXISTS is a single safe statement; default
+    // is `true` so legacy rows behave like an unmetered visitor.
+    await query(
+      `ALTER TABLE chat_messages
+        ADD COLUMN IF NOT EXISTS watering_allowed BOOLEAN NOT NULL DEFAULT true`,
     );
   })().catch((err) => {
     // Reset so a later request can retry rather than being permanently
@@ -46,7 +54,13 @@ function ensureSchema(): Promise<void> {
 
 export type ChatRole = "user" | "assistant";
 
-export type StoredToolCall = { name: string };
+/**
+ * One tool the agent invoked while writing a reply. `status` echoes the
+ * branch the tool returned in (e.g. `queued`, `out_of_droplets`,
+ * `soil_already_full`) so the client UI can render the right pill label
+ * and decide whether to spend a droplet locally.
+ */
+export type StoredToolCall = { name: string; status?: string };
 
 export type ChatMessageRecord = {
   id: number;
@@ -55,6 +69,8 @@ export type ChatMessageRecord = {
   authorName: string;
   content: string;
   toolCalls: StoredToolCall[] | null;
+  /** False if the visitor was out of droplets when they sent this turn. */
+  wateringAllowed: boolean;
   createdAt: string;
 };
 
@@ -65,6 +81,7 @@ type ChatMessageRow = {
   author_name: string;
   content: string;
   tool_calls: StoredToolCall[] | null;
+  watering_allowed: boolean;
   created_at: Date;
 };
 
@@ -76,9 +93,12 @@ function rowToRecord(row: ChatMessageRow): ChatMessageRecord {
     authorName: row.author_name,
     content: row.content,
     toolCalls: row.tool_calls,
+    wateringAllowed: row.watering_allowed,
     createdAt: row.created_at.toISOString(),
   };
 }
+
+const MESSAGE_COLS = `id, plant_id, role, author_name, content, tool_calls, watering_allowed, created_at`;
 
 // ---------------------------------------------------------------------------
 // Queries
@@ -114,12 +134,12 @@ export async function listMessages({
   // Fetch one extra row so we can answer "has more" without a separate count.
   const rows = await query<ChatMessageRow>(
     beforeId !== undefined
-      ? `SELECT id, plant_id, role, author_name, content, tool_calls, created_at
+      ? `SELECT ${MESSAGE_COLS}
            FROM chat_messages
           WHERE plant_id = $1 AND id < $2
           ORDER BY id DESC
           LIMIT $3`
-      : `SELECT id, plant_id, role, author_name, content, tool_calls, created_at
+      : `SELECT ${MESSAGE_COLS}
            FROM chat_messages
           WHERE plant_id = $1
           ORDER BY id DESC
@@ -150,7 +170,7 @@ export async function listMessagesSince(
   await ensureSchema();
   const safeLimit = Math.max(1, Math.min(MAX_LIMIT, limit));
   const rows = await query<ChatMessageRow>(
-    `SELECT id, plant_id, role, author_name, content, tool_calls, created_at
+    `SELECT ${MESSAGE_COLS}
        FROM chat_messages
       WHERE plant_id = $1 AND id > $2
       ORDER BY id ASC
@@ -166,6 +186,11 @@ export type InsertMessageArgs = {
   authorName: string;
   content: string;
   toolCalls?: StoredToolCall[] | null;
+  /**
+   * Per-message droplet flag from the client. Defaults to `true` so
+   * assistant messages and any caller that doesn't care are not gated.
+   */
+  wateringAllowed?: boolean;
 };
 
 export async function insertMessage(
@@ -173,15 +198,16 @@ export async function insertMessage(
 ): Promise<ChatMessageRecord> {
   await ensureSchema();
   const rows = await query<ChatMessageRow>(
-    `INSERT INTO chat_messages (plant_id, role, author_name, content, tool_calls)
-     VALUES ($1, $2, $3, $4, $5)
-     RETURNING id, plant_id, role, author_name, content, tool_calls, created_at`,
+    `INSERT INTO chat_messages (plant_id, role, author_name, content, tool_calls, watering_allowed)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     RETURNING ${MESSAGE_COLS}`,
     [
       args.plantId,
       args.role,
       args.authorName,
       args.content,
       args.toolCalls ? JSON.stringify(args.toolCalls) : null,
+      args.wateringAllowed ?? true,
     ],
   );
   if (!rows[0]) throw new Error("Failed to insert chat message");

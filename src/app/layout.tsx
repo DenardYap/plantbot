@@ -6,6 +6,7 @@ import { RoutePrewarmer } from "@/components/nav/RoutePrewarmer";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { QueryProvider } from "@/components/providers/QueryProvider";
 import { SITE } from "@/lib/site";
+import { Analytics } from "@vercel/analytics/next";
 
 const nunito = Nunito({
   variable: "--font-nunito",
@@ -103,6 +104,7 @@ export default function RootLayout({
           </main>
           <SiteFooter />
         </QueryProvider>
+        <Analytics />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
